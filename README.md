@@ -49,6 +49,24 @@ The full tree is not balanced:
     - plus a sub-tree...
 The tree has 0 unused byte.
 
+Warning
+-------
+
+For performances purposes, the code make a large use of monomorphization (no dynamic dispath at all!).
+It leads to:
+* very long compilation time (several minutes, especially in release mode)
+* large binaries:
+    - `mkbst` (tree creation) is about 9/65 MB in release/debug mode
+    - `qbst` (tree query) is about 29/116 MB in release/debug mode
+
+Install
+-------
+
+The standard way to install both `mkbst` and `qbst` binaries is:
+* fork this repository
+* install rust [see here](https://www.rust-lang.org/tools/install), possibly removing `--tlsv1.2` in the command line
+* type `cargo install --path .` from the forked directory
+
 Example
 -------
 
@@ -87,6 +105,14 @@ Benchmark on magnitudes
 
 TBD
 
+
+TODO list
+---------
+
+* [ ] remove the code which is now obsolete (`get` overwritten by `get exact visitor` 
+* [ ] add much more tests
+* [ ] add benchmarks
+* [ ] try to reduce the code redundance (particularly in `SubTreeW` and `SubTreeR`)
 
 Acknowledgements
 ----------------
