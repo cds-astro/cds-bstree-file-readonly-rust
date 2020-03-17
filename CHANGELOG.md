@@ -3,6 +3,8 @@
 
 ## 0.1.0
 
-Released 2019-xx-xx.
+Released 2020-03-17.
+
+### First released to be tested
 
 

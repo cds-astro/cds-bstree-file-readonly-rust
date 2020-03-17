@@ -1,5 +1,5 @@
 [package]
-name = "rust-bstree-file"
+name = "bstree_file"
 version = "0.1.0"
 authors = ["pineau <francois-xavier.pineau@astro.unistra.fr>"]
 edition = "2018"
@@ -7,3 +7,11 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+num-traits = "0.2"       # Generic float for f32 and f64
+structopt = "0.3"        # CLI lib (based on clap)
+byteorder = "1.3.2"      # Byteorder
+csv = "1.1"              # CVS parsing lib
+itertools = "0.8.2"      # For advanced methods on iterators
+bincode = "1.2.1"        # Binary serialization/deserialisation
+memmap = "0.7.0"         # Support for memory-mapped files
+serde = { version = "1.0.104", features = ["derive"] }

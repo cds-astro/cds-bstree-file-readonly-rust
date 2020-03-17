@@ -1,4 +1,3 @@
-
 <meta charset="utf-8"/>
 
 # `bstree-file`
@@ -11,15 +10,15 @@ Immutable implicit naive Binary Search Tree structure stored in a file.
 The tree structure (possibly larger than the available RAM) is created at once
 using bulk-loading.
 It is then possible to perform queries on the datastructure
-(nn query, knn query, range query), but not to update it.
+(nn query, knn query, range query, ...), but not to update it.
 
-It has been developped for static astronomical catalogues.
+It has been developed for static astronomical catalogues.
 
 The datastructure is implicit: it is basically a flat array of entries 
 ordered in a pre-defined way depending on a few parameters like
-the number of elements in the tree and the node size.
+the number of elements in the tree, the size of both the L1 and the disk caches.
 
-The implementation is a naive implementation by a non-expert,
+The implementation is probably a naive implementation by a non-expert,
 any feedback welcome.
 
 Purpose
@@ -28,23 +27,59 @@ Purpose
 Perform fast queries on a single catalogue column.
 The binary-search tree basically stores both values and OIDs (row indices).
 
+In input, the tools takes an identifiers (which can be an implicit sequential number)
+and a value.
+The indexation is made on the values.
+Queries returns entries which basically are tuples containing an identifier and value couple.
+
 
 Creation algorithm
 ------------------
 
-Althought the first step is an external merge sort, 
+Although the first step is an external k-way merge sort, 
 the final file is not ordered sequentially.
 It consists in a sequence of binary search tree blocks.
-The first block in the file contains the root of the tree.
+There is two levels of blocks: 
+* blocks fitting in the L1 cache
+* groups of blocks fitting in the disk cache 
+The full tree is not balanced:
+* it is made of a main balance tree
+* plus a sub-tree recursivly consiting in
+    - a main balanced tree
+    - plus a sub-tree...
+The tree has 0 unused byte.
 
-Example of root block containg the 3 first tree layers (depth 0 to 2).
+Example
+-------
 
-| d0  | d1       | d2                 |
-|-----|----------|--------------------|
-| n/2 | n/4 3n/4 | n/8 2n/8 3n/8 4n/8 |
+Bash script [mkseq.bash](resources/test/mkseq.bash) to generate a simple sequence of value from 0 to `n`:
+```bash
+#!/bin/bash
 
-Values `n/2`, ... are the indices in the (virtual) ordered array containing
-all entries.
+declare -rx END=$1
+
+echo "val"
+
+COUNTER=0
+until [ $COUNTER -ge ${END} ]; do
+  echo $COUNTER
+  let COUNTER+=1
+done
+``` 
+Create a simple tree containing 2 billion entries consisting of tuples having the
+same identifiers (a row number) and value (the row number):
+```bash
+./mkseq.bash 2000000000 | ./mkbst -h bigtest --id-type u4 --val-type u4
+```
+Both identifiers and values are stored on regular 32bit unsigned integers.
+
+Perform queries:
+```bash
+time ./qbst bigtest.bstree.bin get -v 256984
+time ./qbst bigtest.bstree.bin knn -v 69853145 -k 10
+time ./qbst bigtest.bstree.bin range -l 10000 -f 25639 -t 250000
+time ./qbst bigtest.bstree.bin range -c -f 25639 -t 250000
+```
 
 
 Benchmark on magnitudes
