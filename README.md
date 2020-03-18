@@ -100,10 +100,118 @@ time ./qbst bigtest.bstree.bin range -c -f 25639 -t 250000
 ```
 
 
-Benchmark on magnitudes
------------------------
+Benchmark
+---------
 
-TBD
+Test on my personal desktop (MVNe SSD, 16 GB RAM, AMD Ryzen) on a 20 GB file containing
+sequential number (from 0 to 1999999999).
+```bash
+> time mkbst -h --input test.2billion.csv test2b --id-type u4 --val-type u4
+
+real	9m49,775s
+user	7m37,361s
+sys	0m50,522s
+```
+It took less than 10min to build the 15 GB ouput file (ok, the input file is alreay sorted).
+
+```bash
+> qbst test2b.bstree.bin info
+
+{
+  "types": [
+    "U32",
+    "U32"
+  ],
+  "constants": {
+    "n_entries": 2000000000,
+    "entry_byte_size": 8,
+    "n_entries_per_l1page": 4096,
+    "n_l1page_per_ldpage": 255
+  },
+  "layout": {
+    "depth": 2,
+    "n_entries_root": 1914,
+    "n_entries_main": 1999622790,
+    "rigthmost_subtree": {
+      "depth": 1,
+      "n_entries_root": 92,
+      "n_entries_main": 376924,
+      "rigthmost_subtree": {
+        "depth": 0,
+        "n_entries_root": 286,
+        "n_entries_main": 286,
+        "rigthmost_subtree": null
+      }
+    }
+  }
+}
+```
+
+Simple exact value query:
+```bash
+> time qbst test2b.bstree.bin get -v 1569874529
+
+id,val
+1569874529,1569874529
+
+real	0m0,002s
+user	0m0,000s
+sys	0m0,002s
+```
+
+Nearest neighbour query
+```bash
+> time qbst test2b.bstree.bin nn -v 3000000000
+
+distance,id,val
+1000000001,1999999999,1999999999
+
+real	0m0,002s (0m0,009s at the first execution)
+user	0m0,002s
+sys	0m0,000s
+```
+
+K nearest neighbours query
+```bash
+> time qbst test2b.bstree.bin knn -v 25684 -k 10
+
+distance,id,val
+0,25684,25684
+1,25685,25685
+1,25683,25683
+2,25686,25686
+2,25682,25682
+3,25681,25681
+3,25687,25687
+4,25688,25688
+4,25680,25680
+5,25679,25679
+
+real	0m0,002s (0m0,005s at the first execution)
+user	0m0,002s
+sys	0m0,000s
+```
+
+Range query
+```bash
+> time qbst test2b.bstree.bin range -l 10 -f 25698470 -t 25698570
+
+id,val
+25698470,25698470
+25698471,25698471
+25698472,25698472
+25698473,25698473
+25698474,25698474
+25698475,25698475
+25698476,25698476
+25698477,25698477
+25698478,25698478
+25698479,25698479
+
+real	0m0,002s
+user	0m0,000s
+sys	0m0,002s
+```
 
 
 TODO list
