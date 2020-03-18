@@ -113,6 +113,7 @@ TODO list
 * [ ] add much more tests
 * [ ] add benchmarks
 * [ ] try to reduce the code redundance (particularly in `SubTreeW` and `SubTreeR`)
+* [ ] add support for NULL values (storing them separatly, out of the tree structure)
 
 Acknowledgements
 ----------------

@@ -87,6 +87,7 @@ pub trait SubTreeR: HasByteSize {
   
 }
 
+#[derive(Debug)]
 pub enum Root {
   L1Leaf(L1Leaf), // L1 very small tree => very unlikely
   L1Node(L1Node),  // L1  -> LD few changes to have the exact number of entries => very unlikely
@@ -201,6 +202,7 @@ impl SubTreeR for Root {
   }
 }
 
+#[derive(Debug)]
 pub enum SubTree {
   L1Leaf(L1Leaf),
   L1Node(L1Node), // LDLeaf = L1Node with L1Leaf as sub-tree. The LDLeaf must fit into the disk cache (except if it is the root).
@@ -298,8 +300,7 @@ impl SubTreeR for SubTree {
   }
 }
 
-
-
+#[derive(Debug)]
 pub enum LDSubTree {
   L1Node(L1Node), // LDLeaf = L1Node with L1Leaf as sub-tree
   LDNode(LDNode),
@@ -388,7 +389,7 @@ impl SubTreeR for LDSubTree {
 }
 
 
-
+#[derive(Debug)]
 pub struct RootL1Node { // Same as LDLeaf with sub-tree instead of Leaf!!
   n_elems: usize,
   sub_tree: SubTree,
@@ -564,7 +565,7 @@ impl SubTreeR for RootL1Node {
 
 }
 
-
+#[derive(Debug)]
 pub struct RootLDNode {
   n_elems: usize,
   n_l1page_elems: usize,
@@ -774,7 +775,7 @@ impl SubTreeR for RootLDNode {
   }
 }
 
-
+#[derive(Debug)]
 pub struct L1Leaf {
   n_elems: usize,
 }
@@ -894,7 +895,7 @@ impl SubTreeR for L1Leaf {
   }
 }
 
-
+#[derive(Debug)]
 pub struct L1Node { // Only the root can be a L1Node
   n_elems: usize,
   sub_tree: Box<SubTree>, // Like LDLeaf with leaf being a sub-tree
@@ -925,10 +926,9 @@ impl SubTreeW for L1Node {
           VRW: ReadWrite<Type=V>,
           T: Iterator<Item=Entry<I, V>> {
     let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
-    assert_eq!(self.byte_size(entry_byte_size), dest.len());
+    assert_eq!(self.byte_size(entry_byte_size), dest.len(), "Wrong buffer size");
     let (mut l1_buff, mut st_buff) = dest.split_at_mut(self.n_elems * entry_byte_size);
     it = write_l1page(it, id_rw, val_rw, &mut l1_buff, self.sub_tree.as_ref(), &mut st_buff)?;
-    assert_eq!(l1_buff.len(), 0);
     Ok(it)
   }
 }
@@ -989,7 +989,7 @@ impl SubTreeR for L1Node {
   }
 }
 
-
+#[derive(Debug)]
 pub struct LDNode {
   n_elems: usize,
   n_l1page_elems: usize,
@@ -1401,41 +1401,6 @@ fn visit_asc_l1page<I, V, IRW, VRW, S, T>(
   Ok(visitor)
 }
 
-/*fn visit<I, V, IRW, VRW, T>(&self, mut visitor: T, raw_entries: &[u8], id_rw: &IRW, val_rw: &VRW)
-                            -> Result<T, Error>
-  where I: Id,
-        V: Val,
-        IRW: ReadWrite<Type=I>,
-        VRW: ReadWrite<Type=V>,
-        T: Visitor<I=I, V=V> {
-  let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
-  assert_eq!(self.byte_size(entry_byte_size), raw_entries.len());
-  let mut entries = RawEntries::new(raw_entries, id_rw, val_rw);
-  let (mut l, mut r) = match entries.binary_search(&visitor.center())? {
-    Ok(i) => {
-      visitor.visit_center(entries.get_entry(i));
-      (i - i, i + 1)
-    },
-    Err(i) => (i, i + 1),
-  };
-  // Visit left part if needed
-  while l >= 0 && visitor.visit_desc() {
-    visitor.visit_le_center(entries.get_entry(l)?);
-    l -= 1;
-  }
-  // Visit right part if needed
-  while r <  entries.len() && visitor.visit_asc() {
-    visitor.visit_he_center(entries.get_entry(r)?);
-    r += 1;
-  }
-  Ok(visitor)
-}*/
-
-// Visitor
-// * look for central value -> Result<Entry<I, V>, >
-// * visit_left -> bool
-// * visit_right -> bool
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BSTreeMeta {
@@ -1577,8 +1542,11 @@ impl BSTreeLayout {
   
   fn from(n_entries: u64, cte: &BSTreeConstants) -> BSTreeLayout {
     let n_l1 = cte.n_entries_per_l1page as u64;
+    let n_ld_elem = cte.n_l1page_per_ldpage as u64 - 1;
+    let n_ld = n_ld_elem + (n_ld_elem + 1) * n_l1;
     // L1
-    if n_entries <= (cte.n_entries_per_l1page as u64) { 
+ //   println!("Nentries: {}; Limit sup depth 0: {}", n_entries, n_l1);
+    if n_entries <= n_l1 {
       return BSTreeLayout {
         depth: 0,
         n_entries_root: n_entries as u16,
@@ -1589,18 +1557,22 @@ impl BSTreeLayout {
     // Test if a single LD block containing max (n_entries_per_l1page + 1) sub-elements is enough
     // L1 -> L1
     let mut n_sub = n_l1;
+//    println!("Nentries: {}; Limit sup depth 1: {}", n_entries, n_l1 + (n_l1 + 1) * n_sub);
     if n_entries <= n_l1 + (n_l1 + 1) * n_sub {
       return BSTreeLayout::from_known_depth(1, n_entries, n_sub, cte);
     }
+    n_sub = 0;
     // Else continue ... (we put a hard limit on the maximum depth).
     for depth in (2..=8).step_by(2) {
       // Transforms L1 -> L1 (-> ...) into L1 -> LD (-> ...)
-      n_sub = (n_l1 - 1) + n_l1 * n_sub;
+      n_sub = n_ld  + (n_ld_elem + 1) * (n_l1 + 1) * n_sub;
+//      println!("Nentries: {}; Limit sup depth {}: {}", n_entries, depth, n_l1 + (n_l1 + 1) * n_sub);
       if n_entries <= n_l1 + (n_l1 + 1) * n_sub {
         return BSTreeLayout::from_known_depth(depth, n_entries, n_sub, cte);
       }
       // Transforms L1 -> LD (-> ...) into L1 -> L1 -> LD (-> ...)
-      n_sub = n_l1 + n_l1 * n_sub;
+      n_sub = n_l1 + (n_l1 + 1) * n_sub;
+//      println!("Nentries: {}; Limit sup depth {}: {}", n_entries, depth + 1, n_l1 + (n_l1 + 1) * n_sub);
       if n_entries <= n_l1 + (n_l1 + 1) * n_sub {
         return BSTreeLayout::from_known_depth(depth + 1, n_entries, n_sub, cte);
       }
@@ -1617,6 +1589,7 @@ impl BSTreeLayout {
     let n_root = ((n_entries - n_subtree) / (1 + n_subtree));
     assert!(n_root as u16 <= cte.n_entries_per_l1page);
     let n_rem = n_entries - (n_root + (n_root + 1) * n_subtree);
+//    println!("n_entries: {}, n_subtree: {}, n_root: {}, n_rem: {}", n_entries, n_subtree, n_root, n_rem);
     return if n_rem == 0 { // Very unlikely!
       BSTreeLayout {
         depth,
@@ -1777,7 +1750,9 @@ pub fn build<I, V, IRW, VRW, T>(
   write_meta(&mut mmap[0..data_starting_byte], encoded_meta)?;
   mmap.flush_range(0, data_starting_byte)?;
   // - data
-  meta.get_root().write(entries_iterator,id_rw, val_rw, &mut mmap[data_starting_byte..file_byte_size])?;
+  let root = meta.get_root();
+//  println!("Root: {:?}", &root);
+  root.write(entries_iterator, id_rw, val_rw, &mut mmap[data_starting_byte..file_byte_size])?;
   mmap.flush();
   file.sync_all()
 }
@@ -1801,7 +1776,7 @@ fn read(input_file: PathBuf) -> Result<Root, Error> {
   let file = File::open(&input_file)?;
   let mmap = unsafe { MmapOptions::new().map(&file)? };
   let (version, data_starting_byte, meta) = read_meta(&mmap)?;
-  println!("Struct: {:?}", &meta);
+//  println!("Struct: {:?}", &meta);
   assert_eq!(byte_size - (data_starting_byte as u64), meta.get_data_byte_size() as u64);
   let root = meta.get_root();
   Ok(root)

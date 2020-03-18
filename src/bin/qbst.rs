@@ -30,6 +30,9 @@ struct Args {
 
 #[derive(Debug, StructOpt)]
 enum Mode {
+  #[structopt(name = "info")]
+  /// Returns tree metadata information
+  Info,
   #[structopt(name = "get")]
   /// Returns the first entry having a value equal to the given value
   GetFirst {
@@ -130,6 +133,10 @@ impl<'a> Process for Query<'a> {
         VRW: ReadWrite<Type=V> {
     let root = self.meta.get_root();
     match self.mode {
+      Mode::Info => {
+        println!("{}", serde_json::to_string_pretty(&self.meta)?);
+        Ok(())
+      },
       Mode::GetFirst { value} => {
         let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type"))?;
         let visitor = VisitorExact::new(v);
