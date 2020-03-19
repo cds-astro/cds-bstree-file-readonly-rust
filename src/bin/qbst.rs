@@ -10,7 +10,7 @@ use structopt::StructOpt;
 use memmap::{Mmap, MmapOptions};
 
 use std::io::{
-  Error, ErrorKind, Read, Write
+  Error, ErrorKind, Read, Write, BufRead, BufReader
 };
 use std::fs::{self, File};
 use std::path::PathBuf;
@@ -36,8 +36,8 @@ enum Mode {
   #[structopt(name = "get")]
   /// Returns the first entry having a value equal to the given value
   GetFirst {
-    #[structopt(short = "v", long)]
-    value: String,
+    #[structopt(subcommand)]
+    val_or_file: ValOrFile,
   },
   #[structopt(name = "all")]
   /// Returns the first entry having a value equal to the given value
@@ -54,8 +54,8 @@ enum Mode {
   #[structopt(name = "nn")]
   /// Returns the entry having its the nearest value from the the given value
   Nn {
-    #[structopt(short = "v", long)]
-    value: String,
+    #[structopt(subcommand)]
+    val_or_file: ValOrFile,
     #[structopt(long)]
     d_max: Option<String>,
   },
@@ -86,6 +86,17 @@ enum Mode {
     count: bool,
   }
 }
+
+#[derive(Debug, StructOpt)]
+enum ValOrFile {
+  #[structopt(name = "value")]
+  /// Execute the command for the specific given value
+  Value { value: String},
+  #[structopt(name = "list")]
+  /// Execute the command for each value in the given file
+  List { file: PathBuf},
+}
+
 
 impl Args {
 
@@ -137,13 +148,37 @@ impl<'a> Process for Query<'a> {
         println!("{}", serde_json::to_string_pretty(&self.meta)?);
         Ok(())
       },
-      Mode::GetFirst { value} => {
+      /*Mode::GetFirst { value} => {
         let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type"))?;
         let visitor = VisitorExact::new(v);
         let visitor = root.visit(visitor, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
         println!("id,val");
         visitor.entry.map(|Entry {id, val}| println!("{:?},{:?}", id, val));
         Ok(())
+      },*/
+      Mode::GetFirst { val_or_file } => {
+        match val_or_file {
+          ValOrFile::Value{ value } => {
+            let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type"))?;
+            let visitor = VisitorExact::new(v);
+            let visitor = root.visit(visitor, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
+            println!("id,val");
+            visitor.entry.map(|Entry { id, val }| println!("{:?},{:?}", id, val));
+            Ok(())
+          },
+          ValOrFile::List{ file } => {
+            let file = File::open(file)?;
+            println!("id,val");
+            for line in BufReader::new(file).lines() {
+              let value = line?;
+              let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type"))?;
+              let visitor = VisitorExact::new(v);
+              let visitor = root.visit(visitor, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
+              visitor.entry.map(|Entry { id, val }| println!("{:?},{:?}", id, val));
+            }
+            Ok(())
+          }
+        }
       },
       Mode::All { value, limit, count } => {
         let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong valie type"))?;
@@ -162,17 +197,37 @@ impl<'a> Process for Query<'a> {
         }
         Ok(())
       },
-      Mode::Nn { value, d_max } => {
-        let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, ""))?;
-        let v = VisitorNn::new(
-          v, dist,
-          d_max.map(|d|  d.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong distance type")))
-            .transpose()?
-        );
-        let v = root.visit(v, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
-        println!("distance,id,val");
-        v.nn.map(|Neigbhour {distance: d, neighbour: Entry {id, val}}| println!("{:?},{:?},{:?}", d, id, val));
-        Ok(())
+      Mode::Nn { val_or_file, d_max } => {
+        let d_max = d_max.map(|d|  d.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong distance type")))
+          .transpose()?;
+        match val_or_file {
+          ValOrFile::Value{ value } => {
+            let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, ""))?;
+            let v = VisitorNn::new(
+              v, &dist,
+              d_max
+            );
+            let v = root.visit(v, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
+            println!("distance,id,val");
+            v.nn.map(|Neigbhour {distance: d, neighbour: Entry {id, val}}| println!("{:?},{:?},{:?}", d, id, val));
+            Ok(())
+          },
+          ValOrFile::List{ file } => {
+            let file = File::open(file)?;
+            println!("distance,id,val");
+            for line in BufReader::new(file).lines() {
+              let value = line?;
+              let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, ""))?;
+              let v = VisitorNn::new(
+                v, &dist,
+                d_max.clone()
+              );
+              let v = root.visit(v, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
+              v.nn.map(|Neigbhour {distance: d, neighbour: Entry {id, val}}| println!("{:?},{:?},{:?}", d, id, val));
+            }
+            Ok(())
+          }
+        }
       },
       Mode::Knn { value, k, d_max } => {
         let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type"))?;

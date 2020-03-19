@@ -1304,20 +1304,20 @@ fn visit_l1page<I, V, IRW, VRW, S, T>(
         let to = from + subtree_byte_size;
         visitor = sub_tree.visit_asc(visitor, &subtree_buff[from..to], id_rw, val_rw)?;
       }
-      (i - 1, i + 1)
+      (i as i32 - 1, i + 1)
     },
     Err(i) => {
       let from = i * subtree_byte_size;
       let to = from + subtree_byte_size;
       visitor = sub_tree.visit(visitor, &subtree_buff[from..to], id_rw, val_rw)?;
-      (i - 1, i)
+      (i as i32 - 1, i)
     },
   };
   while l >= 0 {
     if !visitor.visit_desc() { break; }
-    visitor.visit_le_center(l1_entries.get_entry(l)?);
+    visitor.visit_le_center(l1_entries.get_entry(l as usize)?);
     if !visitor.visit_desc() { break; }
-    let from = l * subtree_byte_size;
+    let from = l as usize * subtree_byte_size;
     let to = from + subtree_byte_size;
     visitor = sub_tree.visit_desc(visitor, &subtree_buff[from..to], id_rw, val_rw)?;
     l -= 1;

@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 /// A finite float cannot contain NaN, +Inf or -Inf values.
 /// We did so in order to be able to implement the `Ord` trait.
 /// See e.g. [this](https://stackoverflow.com/questions/28247990/how-to-do-a-binary-search-on-a-vec-of-floats).
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct FiniteFloat<T: Float>(T);
 
 impl <T: Float> FiniteFloat<T>  {

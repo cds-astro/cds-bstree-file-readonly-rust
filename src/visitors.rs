@@ -241,25 +241,25 @@ impl<I: Id, V: Val> Visitor for VisitorAll<I, V> {
 }
 
 /// Look for the nearest neighbour
-pub struct VisitorNn<I, V, U, D>
+pub struct VisitorNn<'a, I, V, U, D>
   where I: Id,
         V: Val,
         U: Ord,
         D: Fn(&V, &V) -> U {
   center: V,
-  dist: D,
+  dist: &'a D,
   d_max: Option<U>,
   pub nn: Option<Neigbhour<I, V, U>>,
   desc: bool,
   asc: bool,
 }
 
-impl<I, V, U, D> VisitorNn<I, V, U, D>
+impl<'a, I, V, U, D> VisitorNn<'a, I, V, U, D>
   where I: Id,
         V: Val,
         U: Ord,
         D: Fn(&V, &V) -> U {
-  pub fn new(center: V, distance: D, d_max: Option<U>) -> VisitorNn<I, V, U, D> {
+  pub fn new(center: V, distance: &'a D, d_max: Option<U>) -> VisitorNn<I, V, U, D> {
     Self {
       center,
       dist: distance,
@@ -271,7 +271,7 @@ impl<I, V, U, D> VisitorNn<I, V, U, D>
   }
 }
 
-impl<I, V, U, D> Visitor for VisitorNn<I, V, U, D>
+impl<'a, I, V, U, D> Visitor for VisitorNn<'a, I, V, U, D>
   where I: Id,
         V: Val,
         U: Ord,

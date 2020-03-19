@@ -73,8 +73,8 @@ pub trait Id: FromStr + FromU64 + Debug {}
 impl<T> Id for T where T: FromStr + FromU64 + Debug{}
 
 /// Trait defining the minimum requirements to be a value
-pub trait Val: FromStr + Ord + Debug {}
-impl<T> Val for T where T: FromStr + Ord + Debug {}
+pub trait Val: FromStr + Clone + Ord + Debug {}
+impl<T> Val for T where T: FromStr + Clone + Ord + Debug {}
 
 
 
