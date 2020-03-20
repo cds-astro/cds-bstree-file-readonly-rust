@@ -424,7 +424,7 @@ impl SubTreeW for RootL1Node {
           VRW: ReadWrite<Type=V>,
           T: Iterator<Item=Entry<I, V>> {
     let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
-    assert_eq!(self.byte_size(entry_byte_size), dest.len());
+    assert_eq!(self.byte_size(entry_byte_size), dest.len(), "Wrong byte size: {} != {}", self.byte_size(entry_byte_size), dest.len());
     // Same algo as L1Node except that the last element is the righmost-subtree
     let subtree_byte_size = self.sub_tree.byte_size(entry_byte_size);
     let (mut l1_buff, r_buff) = dest.split_at_mut(self.n_elems * entry_byte_size);
@@ -439,7 +439,6 @@ impl SubTreeW for RootL1Node {
     }
     // Plus the rightmost subtree
     it = self.rightmost_subtree.write(it, id_rw, val_rw, &mut r_buff)?;
-    assert_eq!(l1_buff.len(), 0);
     assert_eq!(st_buff.len(), 0);
     Ok(it)
   }
@@ -455,7 +454,7 @@ impl SubTreeR for RootL1Node {
           IRW: ReadWrite<Type=I>,
           VRW: ReadWrite<Type=V> {
     let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
-    debug_assert_eq!(self.byte_size(entry_byte_size), raw_entries.len());
+    assert_eq!(self.byte_size(entry_byte_size), raw_entries.len(), "Wrong byte size: {} != {}", self.byte_size(entry_byte_size), raw_entries.len());
     // Same algo as L1Node except that the last element is the righmost-subtree
     let subtree_byte_size = self.sub_tree.byte_size(entry_byte_size);
     let (l1_buff, r_buff) = raw_entries.split_at(self.n_elems * entry_byte_size);
@@ -491,7 +490,7 @@ impl SubTreeR for RootL1Node {
           T: Visitor<I=I, V=V> {
     debug_assert!(raw_entries.len() > 0);
     let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
-    debug_assert_eq!(self.byte_size(entry_byte_size), raw_entries.len());
+    assert_eq!(self.byte_size(entry_byte_size), raw_entries.len(), "Wrong byte size: {} != {}", self.byte_size(entry_byte_size), raw_entries.len());
     // Same algo as L1Node except that the last element is the righmost-subtree
     let subtree_byte_size = self.sub_tree.byte_size(entry_byte_size);
     let (l1_buff, r_buff) = raw_entries.split_at(self.n_elems * entry_byte_size);
@@ -602,7 +601,7 @@ impl SubTreeW for RootLDNode {
           VRW: ReadWrite<Type=V>,
           T: Iterator<Item=Entry<I, V>> {
     let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
-    assert_eq!(self.byte_size(entry_byte_size), dest.len());
+    assert_eq!(self.byte_size(entry_byte_size), dest.len(), "Wrong byte size: {} != {}", self.byte_size(entry_byte_size), dest.len());
     // Same algo as LDNode except that the las element is the rightmost sub-tree
     let l1page_byte_size = self.n_l1page_elems * entry_byte_size;
     let subtree_group_byte_size = (self.n_l1page_elems + 1) * self.sub_tree.byte_size(entry_byte_size);
@@ -624,9 +623,8 @@ impl SubTreeW for RootLDNode {
     }
     // And write the rightmost subtree
     it = self.rightmost_subtree.write(it, id_rw, val_rw, &mut r_buff)?;
-    assert_eq!(ld_buff.len(), 0);
-    assert_eq!(l1_buff.len(), 0);
-    assert_eq!(st_buff.len(), 0);
+    assert_eq!(l1_buff.len(), 0, "Wrong L1 buff size: {}", l1_buff.len());
+    assert_eq!(st_buff.len(), 0, "Wrong ST buff size: {}", st_buff.len());
     Ok(it)
   }
 
@@ -802,7 +800,7 @@ impl SubTreeW for L1Leaf {
           VRW: ReadWrite<Type=V>,
           T: Iterator<Item=Entry<I, V>> {
     let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
-    assert_eq!(self.byte_size(entry_byte_size), dest.len());
+    assert_eq!(self.byte_size(entry_byte_size), dest.len(), "Wrong byte size: {} != {}", self.byte_size(entry_byte_size), dest.len());
     for _ in 0..self.n_elems {
       it.next().ok_or_else(|| Error::new(ErrorKind::Other, "Iterator depleted!"))?
         .write(&mut dest, id_rw, val_rw)?;
@@ -1024,7 +1022,7 @@ impl SubTreeW for LDNode {
           VRW: ReadWrite<Type=V>,
           T: Iterator<Item=Entry<I, V>> {
     let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
-    assert_eq!(self.byte_size(entry_byte_size), dest.len());
+    assert_eq!(self.byte_size(entry_byte_size), dest.len(), "Wrong byte size: {} != {}", self.byte_size(entry_byte_size), dest.len());
     // Split the 3 blocs [ld][l1, l1, ..., l1][ST, ST, ..., ST]
     let l1page_byte_size = self.n_l1page_elems * entry_byte_size;
     let subtree_group_byte_size = (self.n_l1page_elems + 1) * self.sub_tree.byte_size(entry_byte_size);
@@ -1234,8 +1232,8 @@ fn write_l1page<I, V, IRW, VRW, S, T>(
   let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
   let subtree_byte_size = sub_tree.byte_size(entry_byte_size);
   let n_l1 = l1_buff.len() / entry_byte_size;
-  assert_eq!(l1_buff.len(),  n_l1 * entry_byte_size);
-  assert_eq!(subtree_buff.len(), (n_l1 + 1) * subtree_byte_size);
+  assert_eq!(l1_buff.len(),  n_l1 * entry_byte_size, "Wrong L1 buff size: {} != {}", l1_buff.len(),  n_l1 * entry_byte_size);
+  assert_eq!(subtree_buff.len(), (n_l1 + 1) * subtree_byte_size, "Wrong SubTree buff size: {} != {}", subtree_buff.len(), (n_l1 + 1) * subtree_byte_size);
   for _ in 0..n_l1 {
     let (mut curr_buff, st_buff) = subtree_buff.split_at_mut(subtree_byte_size);
     it = sub_tree.write(it, id_rw, val_rw, &mut curr_buff)?;
@@ -1545,7 +1543,6 @@ impl BSTreeLayout {
     let n_ld_elem = cte.n_l1page_per_ldpage as u64 - 1;
     let n_ld = n_ld_elem + (n_ld_elem + 1) * n_l1;
     // L1
- //   println!("Nentries: {}; Limit sup depth 0: {}", n_entries, n_l1);
     if n_entries <= n_l1 {
       return BSTreeLayout {
         depth: 0,
@@ -1557,25 +1554,22 @@ impl BSTreeLayout {
     // Test if a single LD block containing max (n_entries_per_l1page + 1) sub-elements is enough
     // L1 -> L1
     let mut n_sub = n_l1;
-//    println!("Nentries: {}; Limit sup depth 1: {}", n_entries, n_l1 + (n_l1 + 1) * n_sub);
     if n_entries <= n_l1 + (n_l1 + 1) * n_sub {
       return BSTreeLayout::from_known_depth(1, n_entries, n_sub, cte);
     }
-    n_sub = 0;
+    n_sub = n_ld;
     // Else continue ... (we put a hard limit on the maximum depth).
     for depth in (2..=8).step_by(2) {
       // Transforms L1 -> L1 (-> ...) into L1 -> LD (-> ...)
-      n_sub = n_ld  + (n_ld_elem + 1) * (n_l1 + 1) * n_sub;
-//      println!("Nentries: {}; Limit sup depth {}: {}", n_entries, depth, n_l1 + (n_l1 + 1) * n_sub);
       if n_entries <= n_l1 + (n_l1 + 1) * n_sub {
         return BSTreeLayout::from_known_depth(depth, n_entries, n_sub, cte);
       }
-      // Transforms L1 -> LD (-> ...) into L1 -> L1 -> LD (-> ...)
       n_sub = n_l1 + (n_l1 + 1) * n_sub;
-//      println!("Nentries: {}; Limit sup depth {}: {}", n_entries, depth + 1, n_l1 + (n_l1 + 1) * n_sub);
+      // Transforms L1 -> LD (-> ...) into L1 -> L1 -> LD (-> ...)
       if n_entries <= n_l1 + (n_l1 + 1) * n_sub {
         return BSTreeLayout::from_known_depth(depth + 1, n_entries, n_sub, cte);
       }
+      n_sub = n_ld_elem + (n_ld_elem + 1) * n_sub;
     }
     // If you this point is reached, there is a problem somewhere (entry size in bytes, ...)
     panic!("Too deep tree. Check your inputs (entry size in bytes, ...)."); 
@@ -1584,12 +1578,12 @@ impl BSTreeLayout {
   /// * `n_subtree`: number of entries in each sub-tree starting a depth (depth + 1). 
   fn from_known_depth(depth: u8, n_entries: u64, n_subtree: u64, cte: &BSTreeConstants) -> BSTreeLayout {
     // nE <= nR + (nR + 1) * nSub
-    // => nE - nSub = nR * (1 + nSub)
-    // => nR = (nE - nSub) / (1 + nSub)
+    // => nE - nSub <= nR * (1 + nSub)
+    // => nR >= (nE - nSub) / (1 + nSub)
     let n_root = ((n_entries - n_subtree) / (1 + n_subtree));
-    assert!(n_root as u16 <= cte.n_entries_per_l1page);
     let n_rem = n_entries - (n_root + (n_root + 1) * n_subtree);
-//    println!("n_entries: {}, n_subtree: {}, n_root: {}, n_rem: {}", n_entries, n_subtree, n_root, n_rem);
+    assert!(n_root as u16 <= cte.n_entries_per_l1page);
+    assert!(n_root as u16 <= cte.n_entries_per_l1page);
     return if n_rem == 0 { // Very unlikely!
       BSTreeLayout {
         depth,
@@ -1751,7 +1745,6 @@ pub fn build<I, V, IRW, VRW, T>(
   mmap.flush_range(0, data_starting_byte)?;
   // - data
   let root = meta.get_root();
-//  println!("Root: {:?}", &root);
   root.write(entries_iterator, id_rw, val_rw, &mut mmap[data_starting_byte..file_byte_size])?;
   mmap.flush();
   file.sync_all()
@@ -1776,7 +1769,6 @@ fn read(input_file: PathBuf) -> Result<Root, Error> {
   let file = File::open(&input_file)?;
   let mmap = unsafe { MmapOptions::new().map(&file)? };
   let (version, data_starting_byte, meta) = read_meta(&mmap)?;
-//  println!("Struct: {:?}", &meta);
   assert_eq!(byte_size - (data_starting_byte as u64), meta.get_data_byte_size() as u64);
   let root = meta.get_root();
   Ok(root)

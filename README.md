@@ -121,10 +121,38 @@ Both identifiers and values are stored on regular 32bit unsigned integers.
 
 Perform queries:
 ```bash
-time ./qbst bigtest.bstree.bin get -v 256984
-time ./qbst bigtest.bstree.bin knn -v 69853145 -k 10
-time ./qbst bigtest.bstree.bin range -l 10000 -f 25639 -t 250000
-time ./qbst bigtest.bstree.bin range -c -f 25639 -t 250000
+time qbst bigtest.bstree.bin get -v 256984
+time qbst bigtest.bstree.bin knn -v 69853145 -k 10
+time qbst bigtest.bstree.bin range -l 10000 -f 25639 -t 250000
+time qbst bigtest.bstree.bin range -c -f 25639 -t 250000
+```
+
+Test on 10 million random f32 values
+------------------------------------
+
+Generate 10 million random f64 and create a bstree storing id on 32 bit integers and value on 32bit floats
+```bash
+genfile 10000000 randf64 | mkbst -h  test_10m --id-type u4 --val-type f4
+```
+
+Look at the nearest value from 0.5
+```bash
+time qbst test_10m.bstree.bin nn value 0.5
+```
+
+Look at the 10 nearest values from 0.2 (the result is ordered by distance to 0.2)
+```bash
+time qbst test_10m.bstree.bin knn -v 0.2 -k 10
+```
+
+Count the number of entries havig value in 0.4 and 0.6
+```bash
+time qbst test_10m.bstree.bin range -f 0.4 -t 0.6 -c
+```
+
+Priny the value in the range 0.49999 and 0.50001 (the result is ordered by increasing values)
+```bash
+time qbst test_10m.bstree.bin range -f 0.49999 -t 0.50001
 ```
 
 

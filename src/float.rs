@@ -3,14 +3,15 @@
 use num_traits::{Float, ParseFloatError, FloatErrorKind};
 use std::str::FromStr;
 use std::cmp::Ordering;
+use std::fmt::{self, Display, Formatter};
 
 /// A finite float cannot contain NaN, +Inf or -Inf values.
 /// We did so in order to be able to implement the `Ord` trait.
 /// See e.g. [this](https://stackoverflow.com/questions/28247990/how-to-do-a-binary-search-on-a-vec-of-floats).
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct FiniteFloat<T: Float>(T);
+pub struct FiniteFloat<T: Float + Display>(T);
 
-impl <T: Float> FiniteFloat<T>  {
+impl<T: Float + Display> FiniteFloat<T>  {
   /// Returns None if the given value is not finite.
   pub fn new(val: T) -> Option<FiniteFloat<T>> {
     if val.is_finite() {
@@ -26,16 +27,16 @@ impl <T: Float> FiniteFloat<T>  {
   }
 }
 
-impl <T: Float> Eq for FiniteFloat<T> {}
+impl <T: Float + Display> Eq for FiniteFloat<T> {}
 
-impl <T: Float> Ord for FiniteFloat<T> {
+impl <T: Float + Display> Ord for FiniteFloat<T> {
   fn cmp(&self, other: &FiniteFloat<T>) -> Ordering {
     // We use the default u32 or u64 comparison knowing that we can only compare finite values.
     self.partial_cmp(other).unwrap()
   }
 }
 
-impl <T: FromStr + Float> FromStr for FiniteFloat<T> {
+impl <T: FromStr + Float + Display> FromStr for FiniteFloat<T> {
   
   type Err = ParseFloatError; //<T as FromStr>::Err;
   
@@ -44,5 +45,11 @@ impl <T: FromStr + Float> FromStr for FiniteFloat<T> {
     FiniteFloat::<T>::new(
       T::from_str(s).map_err(|_| ERR)?
     ).ok_or_else(|| ERR)
+  }
+}
+
+impl<T: Float + Display> Display for FiniteFloat<T> {
+  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", &self.get())
   }
 }

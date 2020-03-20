@@ -29,7 +29,7 @@
 
 use serde::{Serialize, Deserialize};
 
-use std::fmt::Debug;
+use std::fmt::{Display, Debug};
 use std::str::FromStr;
 use std::marker::PhantomData;
 use std::cmp::Ordering::{self, Greater, Equal, Less};
@@ -69,12 +69,12 @@ impl FromU64 for String {
 
 /// Trait defining the minimum requirements to be an identifier
 /// * `FromU64` is used to be able to generate the identifier from a line number
-pub trait Id: FromStr + FromU64 + Debug {}
-impl<T> Id for T where T: FromStr + FromU64 + Debug{}
+pub trait Id: FromStr + FromU64 + Display + Debug {}
+impl<T> Id for T where T: FromStr + FromU64 + Display + Debug{}
 
 /// Trait defining the minimum requirements to be a value
-pub trait Val: FromStr + Clone + Ord + Debug {}
-impl<T> Val for T where T: FromStr + Clone + Ord + Debug {}
+pub trait Val: FromStr + Clone + Ord + Display + Debug {}
+impl<T> Val for T where T: FromStr + Clone + Ord + Display + Debug {}
 
 
 
@@ -105,7 +105,8 @@ impl IdType {
       IdType::U32 | 
       IdType::U40 | 
       IdType::U48 | 
-      IdType::U56 => true,
+      IdType::U56 |
+      IdType::U64 => true,
       _ => false,
     }
   }

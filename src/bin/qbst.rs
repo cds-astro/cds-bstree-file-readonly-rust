@@ -163,7 +163,7 @@ impl<'a> Process for Query<'a> {
             let visitor = VisitorExact::new(v);
             let visitor = root.visit(visitor, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
             println!("id,val");
-            visitor.entry.map(|Entry { id, val }| println!("{:?},{:?}", id, val));
+            visitor.entry.map(|Entry { id, val }| println!("{},{}", id, val));
             Ok(())
           },
           ValOrFile::List{ file } => {
@@ -174,7 +174,7 @@ impl<'a> Process for Query<'a> {
               let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type"))?;
               let visitor = VisitorExact::new(v);
               let visitor = root.visit(visitor, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
-              visitor.entry.map(|Entry { id, val }| println!("{:?},{:?}", id, val));
+              visitor.entry.map(|Entry { id, val }| println!("{},{}", id, val));
             }
             Ok(())
           }
@@ -192,7 +192,7 @@ impl<'a> Process for Query<'a> {
           let v = root.visit(v, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
           println!("id,val");
           for Entry {id, val} in v.entries {
-            println!("{:?},{:?}", id, val);
+            println!("{},{}", id, val);
           }
         }
         Ok(())
@@ -209,7 +209,7 @@ impl<'a> Process for Query<'a> {
             );
             let v = root.visit(v, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
             println!("distance,id,val");
-            v.nn.map(|Neigbhour {distance: d, neighbour: Entry {id, val}}| println!("{:?},{:?},{:?}", d, id, val));
+            v.nn.map(|Neigbhour {distance: d, neighbour: Entry {id, val}}| println!("{},{},{}", d, id, val));
             Ok(())
           },
           ValOrFile::List{ file } => {
@@ -223,7 +223,7 @@ impl<'a> Process for Query<'a> {
                 d_max.clone()
               );
               let v = root.visit(v, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
-              v.nn.map(|Neigbhour {distance: d, neighbour: Entry {id, val}}| println!("{:?},{:?},{:?}", d, id, val));
+              v.nn.map(|Neigbhour {distance: d, neighbour: Entry {id, val}}| println!("{},{},{}", d, id, val));
             }
             Ok(())
           }
@@ -239,7 +239,7 @@ impl<'a> Process for Query<'a> {
         let v = root.visit(v, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
         println!("distance,id,val");
         for Neigbhour{distance: d, neighbour: Entry {id, val}} in v.knn.into_sorted_vec().drain(..) {
-          println!("{:?},{:?},{:?}", d, id, val);
+          println!("{},{},{}", d, id, val);
         }
         Ok(())
       },
@@ -256,7 +256,7 @@ impl<'a> Process for Query<'a> {
           let v = root.visit(v, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
           println!("id,val");
           for Entry {id, val} in v.entries {
-            println!("{:?},{:?}", id, val);
+            println!("{},{}", id, val);
           }
         }
         Ok(())
