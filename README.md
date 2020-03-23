@@ -322,6 +322,67 @@ We recall that the index file is 15 GB large, so 2nd excecution is faster since 
 is in the disk cache.
 
 
+Bench on 10 billion f32 random values (in `[0, 1)`
+--------------------------------------------------
+
+Generate the value and the index at once:
+```bash
+nohup sh -c "genfile 10000000000 randf64 | mkbst -h test.10b.randf64 --id-type u5 --val-type f4" &
+```
+Or in two steps
+```bash
+genfile 10000000000 randf64 > test_10b_randf64.csv
+mkbst -h --input test_10b_randf64.csv test.10b.randf64 --id-type u5 --val-type f4
+```
+
+The queries have been tested on 2 distinct hardware:
+* Desktop computer
+    + 1 TB, 7200 RPM, 32 MB cache HDD (HGST HTS721010A9E630)
+    + Intel(R) Core(TM) i5-6600 CPU @ 3.30GHz (6 MB "smart cache")
+    + 16 GB DDR4 2133 MHz
+* Server
+    + RAID of 5 SSDs (Samsung SATA SSDs)
+    + 2x Intel(R) Xeon(R) CPU E5-2650 v3 @ 2.30GHz (25 MB "smart cache")
+    + 64 GB DDR4 2133 MHz
+
+The table return the "real" time provided by the "time" command.
+Each command starts by `time qbst test.10b.bstree.bin` plus the `Query params`.
+
+Here the command to generate the list input file:
+```bash
+genfile 10000 randf64 | egrep -v "val" | sort -n > randf64_4q.csv
+```
+
+Query params | Result | 1st or 2nd | Desktop | Server
+-------------|--------|------------|---------|--------
+nn value 0.5 | 1 | | 0m0,071s | 0m0.013s
+nn value 0.5 | 2 | | 0m0,004s | 0m0.003s
+knn -v 0.8 -k 10 | 1 | | 0m0,034s | 0m0.007s
+knn -v 0.8 -k 10 | 2 | | 0m0,004s | 0m0.003s
+all -v 0.8 -c | 1/2 | 588 | 0,004s | 0m0.005s
+all -v 0.2 -c | 1 | 148 | 0m0,026s | 0m0.011s
+all -v 0.2 -c | 2 | 148 | 0m0,004s | 0m0.003s
+range -f 0.4 -t 0.5 -c | 1/2 | 1000028688 | 1m5,450s | 1m57.212s
+range -f 0.150 -t 0.149 -c | 1 | 157 | 0m0,028s | 0m0.025s
+range -f 0.150 -t 0.149 -c | 2 | 157 | 0m0,004s | 0m0.003s
+get list 1000.csv > res.csv | 1 | | 0m9,392s | 0m0.251s
+get list 1000.csv > res.csv | 2 | | 0m0,026s | 0m0.034s
+get list 10000.csv > res.csv | 1 | | 1m40,354s | 0m3.807s 
+get list 10000.csv > res.csv | 2 | | 0m0,181s | 0m0.207s
+get list 100000.csv > res.csv | 1 | | | 0m24.548s (same res if not sorted)
+
+In the last case (100000 queries, no data in the disk cache), 
+the mean query time is about 0.24 ms (which is probably not far from the disk access time).
+
+In the previous results, we clearly see the effect of the spinning vs SSD disk at the first execution.
+On the query 'range -f 0.4 -t 0.5 -c' we see that the server has a slower CPU.
+
+The query 'get list 10000.csv' is very interesting (a factor more than x20 in performances!):
+* the mean time on a spinning disk is about 10 ms
+* the mean time on a SSD disk is about 0.4 ms 
+
+
+
 TODO list
 ---------
 
