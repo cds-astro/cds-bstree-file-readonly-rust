@@ -76,7 +76,7 @@ impl TmpDir {
 
   // Return the complete path of tmp file of index level `l` and index `i` 
   fn get_file_path(&self, index: usize) -> PathBuf {
-    let mut file_path = self.path.clone();
+    let mut file_path = self.path.clone(); // USE JOIN!!
     file_path.push(format!("{}_l{}i{}", TMP_FILE_PREFIX, self.level, index));
     file_path
   } 
@@ -109,7 +109,13 @@ impl TmpDir {
       // reduce by k-way merge using itertools
       for chunk in &(0..self.n_files).into_iter().chunks(k) {
         // Merge k tmp files into a new file
-        next_level_dir.write_tmp_file(id_rw, val_rw, chunk.map(|i| self.to_sorted_entry_iter(id_rw, val_rw, i)).kmerge());
+        next_level_dir.write_tmp_file(
+          id_rw, val_rw,
+          chunk.map(|i| {
+            eprintln!("level: {}; i_chunk: {}", self.level, &i);
+            self.to_sorted_entry_iter(id_rw, val_rw, i)
+          }).kmerge()
+        );
       }
       // Merge k files till number of temporary files is larger than k
       next_level_dir.reduce_to_k_files(id_rw, val_rw, k)

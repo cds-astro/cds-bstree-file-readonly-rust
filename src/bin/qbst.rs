@@ -272,7 +272,7 @@ impl<'a> Process for Query<'a> {
 
 
 fn main() -> Result<(), Error> {
-  // Parse commande line arguments
+  // Parse command line arguments
   let args = Args::from_args();
   args.check();
   args.exec()?;

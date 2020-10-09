@@ -18,7 +18,12 @@
 //! If designed for HDD, we want to avoid random access (5ms seek time):
 //! * we thus prefer to load large parts of the file in RAM
 //!     - we favor a single root node (kept in cache), and an array of leaf nodes
-//! * each node stored on the disk must be devided into sub-node no larger than the L1 cache capacity 
+//! * each node stored on the disk must be devided into sub-node no larger than the L1 cache capacity
+//!
+//! If you are looking for a index that can be modifed (add and remove key/value pair), you should
+//! have a look at [self](https://sled.rs/) and its [git repo](https://github.com/spacejam/sled).
+//! They cite [this paper](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/bw-tree-icde2013-final.pdf)
+//! I should definitly have a look at!!
 
 // L1Node<E> = simple &[E] of size nL1 such that size_of<E> * nL1 < 90% of L1 cache size
 // (nL1InL3 - 1) * size_of<E> (1 + nL1) < L3 cache size

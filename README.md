@@ -12,14 +12,19 @@ using bulk-loading.
 It is then possible to perform queries on the datastructure
 (nn query, knn query, range query, ...), but not to update it.
 
-It has been developed for static astronomical catalogues.
+It has been developed for (with a more general usage than) static astronomical catalogues.
 
 The datastructure is implicit: it is basically a flat array of entries 
 ordered in a pre-defined way depending on a few parameters like
 the number of elements in the tree, the size of both the L1 and the disk caches.
 
-The implementation is probably a naive implementation by a non-expert,
-any feedback welcome.
+The simple design inputs are:
+* a metadata part followed by the data part
+* data part as conpact as possible, but without compression
+* => hence the choice of an implicit structure with an unbalanced rightmost part of the tree
+
+Remark: I do not claim this is the best possible structure, 
+it is a quite naive implementation by a non-expert, any feedback welcome.
 
 Purpose
 -------
@@ -44,13 +49,16 @@ There is two levels of blocks:
 * groups of blocks fitting in the disk cache 
 The full tree is not balanced:
 * it is made of a main balance tree
-* plus a sub-tree recursivly consiting in
+* plus a rightmost sub-tree recursivly consiting in
     - a main balanced tree
-    - plus a sub-tree...
+    - plus a rightmost sub-tree...
 The tree has 0 unused byte.
 
 Warning
 -------
+
+Main functionnalities are complete (building and queryig), but this is not 
+necessarilly production ready: more testing is needed (please report any bug).
 
 For performances purposes, the code makes a large use of monomorphization (no dynamic dispath at all!).
 It leads to:
@@ -89,7 +97,7 @@ done
 
 Remark: one can use the `shuf` command (first removing and then adding `val`) to shuffle the input lines.
 
-### Genereate data
+### Generate data
 
 The `genfile` tool generates simple files to test the BSTree code.
 Example:
@@ -322,7 +330,7 @@ We recall that the index file is 15 GB large, so 2nd excecution is faster since 
 is in the disk cache.
 
 
-Bench on 10 billion f32 random values (in `[0, 1)`
+Bench on 10 billion f32 random values in `[0, 1)`
 --------------------------------------------------
 
 Generate the value and the index at once:
@@ -335,6 +343,8 @@ genfile 10000000000 randf64 > test_10b_randf64.csv
 mkbst -h --input test_10b_randf64.csv test.10b.randf64 --id-type u5 --val-type f4
 ```
 
+The size of the index is `~85 GB`.
+
 The queries have been tested on 2 distinct hardware:
 * Desktop computer
     + 1 TB, 7200 RPM, 32 MB cache HDD (HGST HTS721010A9E630)
@@ -345,21 +355,21 @@ The queries have been tested on 2 distinct hardware:
     + 2x Intel(R) Xeon(R) CPU E5-2650 v3 @ 2.30GHz (25 MB "smart cache")
     + 64 GB DDR4 2133 MHz
 
-The table return the "real" time provided by the "time" command.
+The table return the "real" time provided by the "time" command.  
 Each command starts by `time qbst test.10b.bstree.bin` plus the `Query params`.
 
-Here the command to generate the list input file:
+Here the command to generate the list input file in the queries using `list`:
 ```bash
 genfile 10000 randf64 | egrep -v "val" | sort -n > randf64_4q.csv
 ```
 
-Query params | Result | 1st or 2nd | Desktop | Server
--------------|--------|------------|---------|--------
+Query params | 1st or 2nd | Result | Desktop | Server
+-------------|------------|--------|---------|--------
 nn value 0.5 | 1 | | 0m0,071s | 0m0.013s
 nn value 0.5 | 2 | | 0m0,004s | 0m0.003s
 knn -v 0.8 -k 10 | 1 | | 0m0,034s | 0m0.007s
 knn -v 0.8 -k 10 | 2 | | 0m0,004s | 0m0.003s
-all -v 0.8 -c | 1/2 | 588 | 0,004s | 0m0.005s
+all -v 0.8 -c | 1/2 | 588 | 0m0,004s | 0m0.005s
 all -v 0.2 -c | 1 | 148 | 0m0,026s | 0m0.011s
 all -v 0.2 -c | 2 | 148 | 0m0,004s | 0m0.003s
 range -f 0.4 -t 0.5 -c | 1/2 | 1000028688 | 1m5,450s | 1m57.212s
@@ -369,29 +379,155 @@ get list 1000.csv > res.csv | 1 | | 0m9,392s | 0m0.251s
 get list 1000.csv > res.csv | 2 | | 0m0,026s | 0m0.034s
 get list 10000.csv > res.csv | 1 | | 1m40,354s | 0m3.807s 
 get list 10000.csv > res.csv | 2 | | 0m0,181s | 0m0.207s
-get list 100000.csv > res.csv | 1 | | | 0m24.548s (same res if not sorted)
+get list 100000.csv > res.csv | 1 | | | 0m24.548s
 
 In the last case (100000 queries, no data in the disk cache), 
 the mean query time is about 0.24 ms (which is probably not far from the disk access time).
 
 In the previous results, we clearly see the effect of the spinning vs SSD disk at the first execution.
-On the query 'range -f 0.4 -t 0.5 -c' we see that the server has a slower CPU.
+On the query `range -f 0.4 -t 0.5 -c` we see that the server has a slower CPU.
 
-The query 'get list 10000.csv' is very interesting (a factor more than x20 in performances!):
+The query `get list 10000.csv` is very interesting (a factor more than x20 in performances!):
 * the mean time on a spinning disk is about 10 ms
 * the mean time on a SSD disk is about 0.4 ms 
 
+For the query `get list 100000.csv > res.csv`, the result time is about the 
+same the input being sorted or not. 
 
+
+Bench with Gaia DR2 data (1.6 Billion entries)
+----------------------------------------------
+
+### With this BSTree index
+
+The use case is simple: from the [Gaia DR2](http://vizier.u-strasbg.fr/viz-bin/VizieR-3?-source=I/345/gaia2) 
+`Source` unique identifier, I want to retrieve the associated position (I am using the formatted position
+`%015.9%+015.9f` as a string made of 30 ASCII chars).  
+Thus here the value I want to index is `Source` and the associated identifier is the position
+(yes it is different from a HashMap in which `Source` would be the (unique) key and the position the associated value
+because in a bs-tree the indexed value is not necessarily unique).
+
+In input, the files looks like:
+```bash
+ra,dec,source
+45.00431616421,0.02104503269,34361129088
+44.99615368416,0.00561580621,4295806720
+45.00497424498,0.01987700037,38655544960
+44.96389532530,0.04359518482,343597448960
+...
+```
+and contains 1,69,2919,136 rows (including the header line).
+
+I build and exec the following script
+```bash
+#!/bin/bash
+
+LC_NUMERIC=C LC_COLLATE=C; \
+tail -n +2 gaia_dr2.idradec.csv | tr ',' ' ' |\
+while read line; do printf "%015.11f%+015.11f,%d\n" $line; done |\
+mkbst gaia_dr2_source --val 1 --id 0 --id-type t30 --val-type u8 
+```
+(the process is quite slow due to the bash `while` and `printf`).
+
+I then have a 2.5 GB file `Gaia_source.txt` containing more 132,739,322 `Source`, looking like:
+```bash
+2448780173659609728
+2448781208748235648
+2448689605685695488
+2448689777484387072
+2448783991887042176
+...
+```
+
+Two consecutive executions (slow 7200 RPM HDD) gives:
+```bash
+time qbst ../gaia_dr2_source.bstree.bin get list Gaia_source.txt > Gaia.test.csv
+
+real	24m4,323s
+user	5m8,834s
+sys	4m52,898s
+```
+and
+```bash
+time qbst ../gaia_dr2_source.bstree.bin get list Gaia_source.txt > Gaia.test.csv
+
+real	13m58,572s
+user	4m2,162s
+sys	3m32,534s
+```
+I guess that the second execution benefits from HDD cache.
+
+Now sorting the input and querying again leads to:
+```bash
+time qbst ../gaia_dr2_source.bstree.bin get list Gaia_source.sorted.txt > Gaia.test.sorted.csv
+
+real	5m53,569s
+user	2m43,339s
+sys	2m28,872s
+```
+The output file is 6.3 GB large.
+
+### With PSQL10
+
+I install PSQL10 on Ubuntu via `apt`, create a user and move the database out of the system disk:
+```bash
+sudo apt-get install postgresql-10
+sudo -u postgres createuser --interactive
+sudo -u postgres createdb fxtests
+sudo systemctrl stop postgresql
+sudo rsync -av /var/lib/postgresql /data-local/psql/ 
+sudo vim /etc/postgresql/10/main/postgresql.conf
+sudo systemctrl start postgresql
+```
+
+I create two tables (the index and the data tables) and copy data:
+```bash
+CREATE TABLE gaia2_idpos (
+  source BIGINT PRIMARY KEY,
+  pos CHAR(30) NOT NULL
+);
+
+COPY gaia2_idpos(pos, source)
+FROM '/data-local/org/gaia_dr2.idradec.4index.csv'
+DELIMITER ',';
+
+```
+and
+```bash
+CREATE TABLE gaia2_id (
+  source BIGINT PRIMARY KEY
+)
+
+COPY gaia2_id(source)
+FROM '/data-local/org/aas/Gaia_source.txt'
+DELIMITER ','
+```
+And perform the query:
+```bash
+time psql -d fxtests -t -A -F"," -c "SELECT b.* FROM gaia2_id as a NATURAL JOIN gaia2_idpos as b" > output.csv
+
+real	53m17,051s
+user	1m4,109s
+sys	0m50,723s
+```
+
+Remarks:
+* I tested PSQL out of the box, without modiying any parameters
+* In the PSQL test, using a PRIMARY KEY for both tables, the result is to be compared with the sorted input in the  BSTree test.
 
 TODO list
 ---------
 
 * [X] add the possibility to query by a list of target
-* [ ] remove the code which is now obsolete (`get` overwritten by `get exact visitor` 
+* [X] make a simple test with PSQL
+* [ ] replace memmory map by pread/pwrite? (see e.g. [positioned-io](https://github.com/vasi/positioned-io) or [scroll](https://github.com/m4b/scroll))
+* [ ] remove the code which is now obsolete (e.g. `get` overwritten by `get exact visitor`)
 * [ ] add much more tests
-* [/] add benchmarks
+* [ ] add benchmarks
 * [ ] try to reduce the code redundance (particularly in `SubTreeW` and `SubTreeR`)
 * [ ] add support for NULL values (storing them separatly, out of the tree structure)
+* [ ] perform tests with [SQLx](https://github.com/launchbadge/sqlx) and PostgreSQL
+      to have a reference time (would be nice if we are at least as fast)
 
 Acknowledgements
 ----------------
