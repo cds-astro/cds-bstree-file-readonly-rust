@@ -1787,7 +1787,7 @@ struct GetProcess<'a> {
 impl<'a> Process for GetProcess<'a> {
   type Output = Option<(String, String)>;
 
-  fn exec<I, V, D, IRW, VRW>(self, types: &IdVal, id_rw: &IRW, val_rw: &VRW, dist: D) -> Result<Self::Output, std::io::Error>
+  fn exec<I, V, D, IRW, VRW>(self, types: IdVal, id_rw: IRW, val_rw: VRW, dist: D) -> Result<Self::Output, std::io::Error>
     where I: Id,
           V: Val,
           D: Fn(&V, &V) -> V,
@@ -1795,7 +1795,7 @@ impl<'a> Process for GetProcess<'a> {
           VRW: ReadWrite<Type=V> {
     let v = self.value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, ""))?; // V::from_str(&self.value).unwrap();
     let root = self.meta.get_root();
-    let opt_entry = root.get(v, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
+    let opt_entry = root.get(v, &self.mmap[self.data_starting_byte..], &id_rw, &val_rw)?;
     Ok(opt_entry.map(|Entry {id, val}| (format!("{:?}", id), format!("{:?}", val))))
   }
 }
@@ -1810,7 +1810,7 @@ struct GetExactProcess<'a> {
 impl<'a> Process for GetExactProcess<'a> {
   type Output = Option<(String, String)>;
 
-  fn exec<I, V, D, IRW, VRW>(self, types: &IdVal, id_rw: &IRW, val_rw: &VRW, dist: D) -> Result<Self::Output, std::io::Error>
+  fn exec<I, V, D, IRW, VRW>(self, types: IdVal, id_rw: IRW, val_rw: VRW, dist: D) -> Result<Self::Output, std::io::Error>
     where I: Id,
           V: Val,
           D: Fn(&V, &V) -> V,
@@ -1820,7 +1820,7 @@ impl<'a> Process for GetExactProcess<'a> {
     let visitor = VisitorExact::new(v);
 
     let root = self.meta.get_root();
-    let visitor = root.visit(visitor, &self.mmap[self.data_starting_byte..], id_rw, val_rw)?;
+    let visitor = root.visit(visitor, &self.mmap[self.data_starting_byte..], &id_rw, &val_rw)?;
     Ok(visitor.entry.map(|Entry {id, val}| (format!("{:?}", id), format!("{:?}", val))))
   }
 }

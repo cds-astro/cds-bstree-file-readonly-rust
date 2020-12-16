@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::io::{ErrorKind, Error, BufReader, BufWriter};
 use std::fs::{self, File};
 
-use crate::{FromU64, Entry};
+use crate::{Id, Val, FromU64, Entry};
 use crate::rw::ReadWrite;
 
 #[derive(Debug, StructOpt)]
@@ -84,8 +84,8 @@ impl TmpDir {
   // By construction, we can't write a file of lower level when we have already performed at least
   // on reduce.
   pub fn write_tmp_file<I, V, IRW, VRW, T>(&mut self, id_rw: &IRW, val_rw: &VRW, entries: T) -> Result<(), Error>
-    where I: FromStr + FromU64,
-          V: FromStr + Ord,
+    where I: Id,
+          V: Val,
           IRW: ReadWrite<Type=I>,
           VRW: ReadWrite<Type=V>,
           T: IntoIterator<Item=Entry<I, V>> {
@@ -100,8 +100,8 @@ impl TmpDir {
   // Recursive function working level by level till the remaining number of temporary file is
   // lower or equald to `k`
   pub fn reduce_to_k_files<I, V, IRW, VRW>(self, id_rw: &IRW, val_rw: &VRW, k: usize) -> Result<Self, Error>
-    where I: FromStr + FromU64,
-          V: FromStr + Ord,
+    where I: Id,
+          V: Val,
           IRW: ReadWrite<Type=I>,
           VRW: ReadWrite<Type=V> {
     if self.n_files > k {
@@ -125,16 +125,16 @@ impl TmpDir {
   }
 
   pub fn to_sorted_iter<'a, I, V, IRW, VRW>(&mut self, id_rw: &'a IRW, val_rw: &'a VRW) -> KMerge<TmpFileIter<'a, I, V, IRW, VRW>>
-    where I: FromStr + FromU64,
-          V: FromStr + Ord,
+    where I: Id,
+          V: Val,
           IRW: ReadWrite<Type=I>,
           VRW: ReadWrite<Type=V> {
     (0..self.n_files).into_iter().map(|i| self.to_sorted_entry_iter(id_rw, val_rw, i)).kmerge()
   }
   
   fn to_sorted_entry_iter<'a, I, V, IRW, VRW>(&self, id_rw: &'a IRW, val_rw: &'a VRW, i: usize) -> TmpFileIter<'a, I, V, IRW, VRW>
-    where I: FromStr + FromU64,
-          V: FromStr + Ord,
+    where I: Id,
+          V: Val,
           IRW: ReadWrite<Type=I>,
           VRW: ReadWrite<Type=V> {
     let file_path = self.get_file_path(i);
@@ -171,8 +171,8 @@ impl Drop for TmpDir {
 
 
 struct TmpFile<'a, I, V, IRW, VRW> 
-  where I: FromStr + FromU64,
-        V: FromStr + Ord,
+  where I: Id,
+        V: Val,
         IRW: ReadWrite<Type=I>,
         VRW: ReadWrite<Type=V>  {
   file: PathBuf,
@@ -181,8 +181,8 @@ struct TmpFile<'a, I, V, IRW, VRW>
 }
 
 impl <'a, I, V, IRW, VRW> IntoIterator for TmpFile<'a, I, V, IRW, VRW>
-  where I: FromStr + FromU64,
-        V: FromStr + Ord,
+  where I: Id,
+        V: Val,
         IRW: ReadWrite<Type=I>,
         VRW: ReadWrite<Type=V> {
   type Item = Entry<I, V>;
@@ -205,8 +205,8 @@ impl <'a, I, V, IRW, VRW> IntoIterator for TmpFile<'a, I, V, IRW, VRW>
 }
 
 pub struct TmpFileIter<'a, I, V, IRW, VRW>
-  where I: FromStr + FromU64,
-        V: FromStr + Ord, 
+  where I: Id,
+        V: Val,
       IRW: ReadWrite<Type=I>,
       VRW: ReadWrite<Type=V> {
   reader: BufReader<File>,
@@ -217,8 +217,8 @@ pub struct TmpFileIter<'a, I, V, IRW, VRW>
 }
 
 impl <'a, I, V, IRW, VRW> Iterator for TmpFileIter<'a, I, V, IRW, VRW>
-  where I: FromStr + FromU64,
-        V: FromStr + Ord,
+  where I: Id,
+        V: Val,
       IRW: ReadWrite<Type=I>,
       VRW: ReadWrite<Type=V>  {
   type Item = Entry<I, V>;

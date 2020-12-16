@@ -538,6 +538,25 @@ If you use this code and work in a scientific public domain
 who developped it. 
 It may help us in promoting our work to our financiers.
 
+Warning
+-------
+
+If the compilation fails with a message like
+```bash
+Caused by:
+  process didn't exit successfully: `rustc --crate-name bstree_file [...]
+  (signal: 9, SIGKILL: kill)
+```
+, try
+```bash
+dmesg | egrep -i 'killed process'
+```
+If the result looks like
+```bash
+[...] Out of memory: Killed process xxxxx (rustc)
+```
+it means that your machine was out of memory.
+
 
 License
 -------

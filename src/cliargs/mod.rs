@@ -5,4 +5,5 @@ pub mod colargs;
 pub mod coltypeargs;
 pub mod memsize;
 pub mod mkargs;
+pub mod mode;
 

@@ -9,7 +9,7 @@ use byteorder::{
 use crate::float::FiniteFloat;
 
 /// Trait used to read and write element of the associated type `Type`.
-pub trait ReadWrite {
+pub trait ReadWrite: Clone + Send {
   type Type;
   /*fn id_type(&self) -> IdType; // Used to be written in the file
   fn val_type(&self) -> ValType;*/
@@ -23,6 +23,7 @@ pub trait ReadWrite {
 
 // Unsigned integers
 
+#[derive(Clone)]
 pub struct U24RW;
 
 impl ReadWrite for U24RW {
@@ -38,6 +39,7 @@ impl ReadWrite for U24RW {
   }
 }
 
+#[derive(Clone)]
 pub struct U32RW;
 
 impl ReadWrite for U32RW {
@@ -53,6 +55,7 @@ impl ReadWrite for U32RW {
   }
 }
 
+#[derive(Clone)]
 pub struct U40RW;
 
 impl ReadWrite for U40RW {
@@ -68,6 +71,7 @@ impl ReadWrite for U40RW {
   }
 }
 
+#[derive(Clone)]
 pub struct U48RW;
 
 impl ReadWrite for U48RW {
@@ -83,6 +87,7 @@ impl ReadWrite for U48RW {
   }
 }
 
+#[derive(Clone)]
 pub struct U56RW;
 
 impl ReadWrite for U56RW {
@@ -98,6 +103,7 @@ impl ReadWrite for U56RW {
   }
 }
 
+#[derive(Clone)]
 pub struct U64RW;
 
 impl ReadWrite for U64RW {
@@ -115,6 +121,7 @@ impl ReadWrite for U64RW {
 
 // Signed integers
 
+#[derive(Clone)]
 pub struct I24RW;
 
 impl ReadWrite for I24RW {
@@ -130,6 +137,7 @@ impl ReadWrite for I24RW {
   }
 }
 
+#[derive(Clone)]
 pub struct I32RW;
 
 impl ReadWrite for I32RW {
@@ -145,6 +153,7 @@ impl ReadWrite for I32RW {
   }
 }
 
+#[derive(Clone)]
 pub struct I40RW;
 
 impl ReadWrite for I40RW {
@@ -160,6 +169,7 @@ impl ReadWrite for I40RW {
   }
 }
 
+#[derive(Clone)]
 pub struct I48RW;
 
 impl ReadWrite for I48RW {
@@ -175,6 +185,7 @@ impl ReadWrite for I48RW {
   }
 }
 
+#[derive(Clone)]
 pub struct I56RW;
 
 impl ReadWrite for I56RW {
@@ -190,6 +201,7 @@ impl ReadWrite for I56RW {
   }
 }
 
+#[derive(Clone)]
 pub struct I64RW;
 
 impl ReadWrite for I64RW {
@@ -207,6 +219,7 @@ impl ReadWrite for I64RW {
 
 // Float
 
+#[derive(Clone)]
 pub struct F32RW;
 
 impl ReadWrite for F32RW {
@@ -223,6 +236,7 @@ impl ReadWrite for F32RW {
   }
 }
 
+#[derive(Clone)]
 pub struct F64RW;
 
 impl ReadWrite for F64RW {
@@ -241,6 +255,7 @@ impl ReadWrite for F64RW {
 
 // String
 
+#[derive(Clone)]
 pub struct StrRW {
   pub n_bytes: usize
 }

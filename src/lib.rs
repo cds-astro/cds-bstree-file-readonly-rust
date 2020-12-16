@@ -52,34 +52,38 @@ use float::FiniteFloat;
 
 pub trait FromU64: Sized {
   fn from_u64(s: u64) -> Self;
+  fn to_u64(&self) -> u64;
 }
 
 impl FromU64 for u32 {
   fn from_u64(s: u64) -> Self {
     s as u32
   }
+  fn to_u64(&self) -> u64 { *self as u64 }
 }
 
 impl FromU64 for u64 {
   fn from_u64(s: u64) -> Self {
     s
   }
+  fn to_u64(&self) -> u64 { *self }
 }
 
 impl FromU64 for String {
   fn from_u64(s: u64) -> Self {
     format!("{}", &s)
   }
+  fn to_u64(&self) -> u64 { panic!("Can't convert string into u64") }
 }
 
 /// Trait defining the minimum requirements to be an identifier
 /// * `FromU64` is used to be able to generate the identifier from a line number
-pub trait Id: FromStr + FromU64 + Display + Debug {}
-impl<T> Id for T where T: FromStr + FromU64 + Display + Debug{}
+pub trait Id: FromStr + FromU64 + Display + Debug + Clone + Send {}
+impl<T> Id for T where T: FromStr + FromU64 + Display + Debug + Clone + Send {}
 
 /// Trait defining the minimum requirements to be a value
-pub trait Val: FromStr + Clone + Ord + Display + Debug {}
-impl<T> Val for T where T: FromStr + Clone + Ord + Display + Debug {}
+pub trait Val: FromStr + Clone + Ord + Display + Debug + Clone + Send {}
+impl<T> Val for T where T: FromStr + Clone + Ord + Display + Debug + Clone + Send {}
 
 
 
@@ -277,12 +281,12 @@ impl FromStr for ValType {
 pub trait Process {
   type Output;
   
-  fn exec<I, V, D, IRW, VRW>(self, types: &IdVal, id_rw: &IRW, val_rw: &VRW, dist: D) -> Result<Self::Output, std::io::Error>
-    where I: Id,
-          V: Val,
-          D: Fn(&V, &V) -> V,
-          IRW: ReadWrite<Type=I>,
-          VRW: ReadWrite<Type=V>;
+  fn exec<I, V, D, IRW, VRW>(self, types: IdVal, id_rw: IRW, val_rw: VRW, dist: D) -> Result<Self::Output, std::io::Error>
+    where I: 'static + Id,
+          V: 'static + Val,
+          D: 'static + Fn(&V, &V) -> V + Send,
+          IRW: 'static + ReadWrite<Type=I>,
+          VRW: 'static + ReadWrite<Type=V>;
 }
 
 
@@ -305,6 +309,10 @@ pub struct IdVal(IdType, ValType);
 
 impl IdVal {
 
+  pub fn id_type(&self) -> &IdType {
+    &self.0
+  }
+
   pub fn val_type(&self) -> &ValType {
     &self.1
   }
@@ -317,144 +325,144 @@ impl IdVal {
     // - con: one version of the code per possible tuple => compiled code may be large!!
     match (&self.0, &self.1) {
       // IdType U24, ValType: All
-      (IdType::U24, ValType::U24) => p.exec(&self, &U24RW, &U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U24, ValType::U32) => p.exec(&self, &U24RW, &U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U24, ValType::U40) => p.exec(&self, &U24RW, &U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U24, ValType::U48) => p.exec(&self, &U24RW, &U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U24, ValType::U56) => p.exec(&self, &U24RW, &U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U24, ValType::U64) => p.exec(&self, &U24RW, &U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U24, ValType::U24) => p.exec(self.clone(), U24RW, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U24, ValType::U32) => p.exec(self.clone(), U24RW, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U24, ValType::U40) => p.exec(self.clone(), U24RW, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U24, ValType::U48) => p.exec(self.clone(), U24RW, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U24, ValType::U56) => p.exec(self.clone(), U24RW, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U24, ValType::U64) => p.exec(self.clone(), U24RW, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
 
-      (IdType::U24, ValType::I24) => p.exec(&self, &U24RW, &I24RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::U24, ValType::I32) => p.exec(&self, &U24RW, &I32RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::U24, ValType::I40) => p.exec(&self, &U24RW, &I40RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U24, ValType::I48) => p.exec(&self, &U24RW, &I48RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U24, ValType::I56) => p.exec(&self, &U24RW, &I56RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U24, ValType::I64) => p.exec(&self, &U24RW, &I64RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U24, ValType::I24) => p.exec(self.clone(), U24RW, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::U24, ValType::I32) => p.exec(self.clone(), U24RW, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::U24, ValType::I40) => p.exec(self.clone(), U24RW, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U24, ValType::I48) => p.exec(self.clone(), U24RW, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U24, ValType::I56) => p.exec(self.clone(), U24RW, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U24, ValType::I64) => p.exec(self.clone(), U24RW, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
-      (IdType::U24, ValType::F32) => p.exec(&self, &U24RW, &F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
-      (IdType::U24, ValType::F64) => p.exec(&self, &U24RW, &F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::U24, ValType::F32) => p.exec(self.clone(), U24RW, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::U24, ValType::F64) => p.exec(self.clone(), U24RW, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
-      (IdType::U24, ValType::Str{n_chars}) => p.exec(&self, &U24RW, &StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
+      (IdType::U24, ValType::Str{n_chars}) => p.exec(self.clone(), U24RW, StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
 
       // IdType U32, ValType: All
-      (IdType::U32, ValType::U24) => p.exec(&self, &U32RW, &U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U32, ValType::U32) => p.exec(&self, &U32RW, &U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U32, ValType::U40) => p.exec(&self, &U32RW, &U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U32, ValType::U48) => p.exec(&self, &U32RW, &U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U32, ValType::U56) => p.exec(&self, &U32RW, &U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U32, ValType::U64) => p.exec(&self, &U32RW, &U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U32, ValType::U24) => p.exec(self.clone(), U32RW, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U32, ValType::U32) => p.exec(self.clone(), U32RW, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U32, ValType::U40) => p.exec(self.clone(), U32RW, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U32, ValType::U48) => p.exec(self.clone(), U32RW, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U32, ValType::U56) => p.exec(self.clone(), U32RW, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U32, ValType::U64) => p.exec(self.clone(), U32RW, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
       
-      (IdType::U32, ValType::I24) => p.exec(&self, &U32RW, &I24RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::U32, ValType::I32) => p.exec(&self, &U32RW, &I32RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::U32, ValType::I40) => p.exec(&self, &U32RW, &I40RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U32, ValType::I48) => p.exec(&self, &U32RW, &I48RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U32, ValType::I56) => p.exec(&self, &U32RW, &I56RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U32, ValType::I64) => p.exec(&self, &U32RW, &I64RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U32, ValType::I24) => p.exec(self.clone(), U32RW, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::U32, ValType::I32) => p.exec(self.clone(), U32RW, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::U32, ValType::I40) => p.exec(self.clone(), U32RW, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U32, ValType::I48) => p.exec(self.clone(), U32RW, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U32, ValType::I56) => p.exec(self.clone(), U32RW, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U32, ValType::I64) => p.exec(self.clone(), U32RW, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
-      (IdType::U32, ValType::F32) => p.exec(&self, &U32RW, &F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
-      (IdType::U32, ValType::F64) => p.exec(&self, &U32RW, &F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::U32, ValType::F32) => p.exec(self.clone(), U32RW, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::U32, ValType::F64) => p.exec(self.clone(), U32RW, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
-      (IdType::U32, ValType::Str{n_chars}) => p.exec(&self, &U32RW, &StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
+      (IdType::U32, ValType::Str{n_chars}) => p.exec(self.clone(), U32RW, StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
 
       // IdType U40, ValType: All
-      (IdType::U40, ValType::U24) => p.exec(&self, &U40RW, &U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U40, ValType::U32) => p.exec(&self, &U40RW, &U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U40, ValType::U40) => p.exec(&self, &U40RW, &U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U40, ValType::U48) => p.exec(&self, &U40RW, &U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U40, ValType::U56) => p.exec(&self, &U40RW, &U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U40, ValType::U64) => p.exec(&self, &U40RW, &U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U40, ValType::U24) => p.exec(self.clone(), U40RW, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U40, ValType::U32) => p.exec(self.clone(), U40RW, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U40, ValType::U40) => p.exec(self.clone(), U40RW, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U40, ValType::U48) => p.exec(self.clone(), U40RW, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U40, ValType::U56) => p.exec(self.clone(), U40RW, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U40, ValType::U64) => p.exec(self.clone(), U40RW, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
 
-      (IdType::U40, ValType::I24) => p.exec(&self, &U40RW, &I24RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::U40, ValType::I32) => p.exec(&self, &U40RW, &I32RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::U40, ValType::I40) => p.exec(&self, &U40RW, &I40RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U40, ValType::I48) => p.exec(&self, &U40RW, &I48RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U40, ValType::I56) => p.exec(&self, &U40RW, &I56RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U40, ValType::I64) => p.exec(&self, &U40RW, &I64RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U40, ValType::I24) => p.exec(self.clone(), U40RW, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::U40, ValType::I32) => p.exec(self.clone(), U40RW, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::U40, ValType::I40) => p.exec(self.clone(), U40RW, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U40, ValType::I48) => p.exec(self.clone(), U40RW, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U40, ValType::I56) => p.exec(self.clone(), U40RW, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U40, ValType::I64) => p.exec(self.clone(), U40RW, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
-      (IdType::U40, ValType::F32) => p.exec(&self, &U40RW, &F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
-      (IdType::U40, ValType::F64) => p.exec(&self, &U40RW, &F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::U40, ValType::F32) => p.exec(self.clone(), U40RW, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::U40, ValType::F64) => p.exec(self.clone(), U40RW, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
-      (IdType::U40, ValType::Str{n_chars}) => p.exec(&self, &U40RW, &StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
+      (IdType::U40, ValType::Str{n_chars}) => p.exec(self.clone(), U40RW, StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
 
       // IdType U48, ValType: All
-      (IdType::U48, ValType::U24) => p.exec(&self, &U48RW, &U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U48, ValType::U32) => p.exec(&self, &U48RW, &U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U48, ValType::U40) => p.exec(&self, &U48RW, &U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U48, ValType::U48) => p.exec(&self, &U48RW, &U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U48, ValType::U56) => p.exec(&self, &U48RW, &U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U48, ValType::U64) => p.exec(&self, &U48RW, &U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U48, ValType::U24) => p.exec(self.clone(), U48RW, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U48, ValType::U32) => p.exec(self.clone(), U48RW, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U48, ValType::U40) => p.exec(self.clone(), U48RW, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U48, ValType::U48) => p.exec(self.clone(), U48RW, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U48, ValType::U56) => p.exec(self.clone(), U48RW, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U48, ValType::U64) => p.exec(self.clone(), U48RW, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
 
-      (IdType::U48, ValType::I24) => p.exec(&self, &U48RW, &I24RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::U48, ValType::I32) => p.exec(&self, &U48RW, &I32RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::U48, ValType::I40) => p.exec(&self, &U48RW, &I40RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U48, ValType::I48) => p.exec(&self, &U48RW, &I48RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U48, ValType::I56) => p.exec(&self, &U48RW, &I56RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U48, ValType::I64) => p.exec(&self, &U48RW, &I64RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U48, ValType::I24) => p.exec(self.clone(), U48RW, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::U48, ValType::I32) => p.exec(self.clone(), U48RW, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::U48, ValType::I40) => p.exec(self.clone(), U48RW, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U48, ValType::I48) => p.exec(self.clone(), U48RW, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U48, ValType::I56) => p.exec(self.clone(), U48RW, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U48, ValType::I64) => p.exec(self.clone(), U48RW, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
-      (IdType::U48, ValType::F32) => p.exec(&self, &U48RW, &F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
-      (IdType::U48, ValType::F64) => p.exec(&self, &U48RW, &F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::U48, ValType::F32) => p.exec(self.clone(), U48RW, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::U48, ValType::F64) => p.exec(self.clone(), U48RW, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
-      (IdType::U48, ValType::Str{n_chars}) => p.exec(&self, &U48RW, &StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
+      (IdType::U48, ValType::Str{n_chars}) => p.exec(self.clone(), U48RW, StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
       
       // IdType U56, ValType: All
-      (IdType::U56, ValType::U24) => p.exec(&self, &U56RW, &U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U56, ValType::U32) => p.exec(&self, &U56RW, &U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U56, ValType::U40) => p.exec(&self, &U56RW, &U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U56, ValType::U48) => p.exec(&self, &U56RW, &U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U56, ValType::U56) => p.exec(&self, &U56RW, &U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U56, ValType::U64) => p.exec(&self, &U56RW, &U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U56, ValType::U24) => p.exec(self.clone(), U56RW, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U56, ValType::U32) => p.exec(self.clone(), U56RW, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U56, ValType::U40) => p.exec(self.clone(), U56RW, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U56, ValType::U48) => p.exec(self.clone(), U56RW, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U56, ValType::U56) => p.exec(self.clone(), U56RW, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U56, ValType::U64) => p.exec(self.clone(), U56RW, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
 
-      (IdType::U56, ValType::I24) => p.exec(&self, &U56RW, &I24RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::U56, ValType::I32) => p.exec(&self, &U56RW, &I32RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::U56, ValType::I40) => p.exec(&self, &U56RW, &I40RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U56, ValType::I48) => p.exec(&self, &U56RW, &I48RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U56, ValType::I56) => p.exec(&self, &U56RW, &I56RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U56, ValType::I64) => p.exec(&self, &U56RW, &I64RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U56, ValType::I24) => p.exec(self.clone(), U56RW, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::U56, ValType::I32) => p.exec(self.clone(), U56RW, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::U56, ValType::I40) => p.exec(self.clone(), U56RW, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U56, ValType::I48) => p.exec(self.clone(), U56RW, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U56, ValType::I56) => p.exec(self.clone(), U56RW, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U56, ValType::I64) => p.exec(self.clone(), U56RW, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
-      (IdType::U56, ValType::F32) => p.exec(&self, &U56RW, &F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
-      (IdType::U56, ValType::F64) => p.exec(&self, &U56RW, &F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::U56, ValType::F32) => p.exec(self.clone(), U56RW, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::U56, ValType::F64) => p.exec(self.clone(), U56RW, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
-      (IdType::U56, ValType::Str{n_chars}) => p.exec(&self, &U56RW, &StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
+      (IdType::U56, ValType::Str{n_chars}) => p.exec(self.clone(), U56RW, StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
       
       // IdType U64, ValType: All
-      (IdType::U64, ValType::U24) => p.exec(&self, &U64RW, &U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U64, ValType::U32) => p.exec(&self, &U64RW, &U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U64, ValType::U40) => p.exec(&self, &U64RW, &U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U64, ValType::U48) => p.exec(&self, &U64RW, &U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U64, ValType::U56) => p.exec(&self, &U64RW, &U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::U64, ValType::U64) => p.exec(&self, &U64RW, &U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U64, ValType::U24) => p.exec(self.clone(), U64RW, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U64, ValType::U32) => p.exec(self.clone(), U64RW, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U64, ValType::U40) => p.exec(self.clone(), U64RW, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U64, ValType::U48) => p.exec(self.clone(), U64RW, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U64, ValType::U56) => p.exec(self.clone(), U64RW, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::U64, ValType::U64) => p.exec(self.clone(), U64RW, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
 
-      (IdType::U64, ValType::I24) => p.exec(&self, &U64RW, &I24RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::U64, ValType::I32) => p.exec(&self, &U64RW, &I32RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::U64, ValType::I40) => p.exec(&self, &U64RW, &I40RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U64, ValType::I48) => p.exec(&self, &U64RW, &I48RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U64, ValType::I56) => p.exec(&self, &U64RW, &I56RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::U64, ValType::I64) => p.exec(&self, &U64RW, &I64RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U64, ValType::I24) => p.exec(self.clone(), U64RW, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::U64, ValType::I32) => p.exec(self.clone(), U64RW, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::U64, ValType::I40) => p.exec(self.clone(), U64RW, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U64, ValType::I48) => p.exec(self.clone(), U64RW, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U64, ValType::I56) => p.exec(self.clone(), U64RW, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::U64, ValType::I64) => p.exec(self.clone(), U64RW, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
-      (IdType::U64, ValType::F32) => p.exec(&self, &U64RW, &F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
-      (IdType::U64, ValType::F64) => p.exec(&self, &U64RW, &F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::U64, ValType::F32) => p.exec(self.clone(), U64RW, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::U64, ValType::F64) => p.exec(self.clone(), U64RW, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
-      (IdType::U64, ValType::Str{n_chars}) => p.exec(&self,&U64RW, &StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
+      (IdType::U64, ValType::Str{n_chars}) => p.exec(self.clone(), U64RW, StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
       
       // IdType Str, ValType: All
-      (IdType::Str{n_chars}, ValType::U24) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::Str{n_chars}, ValType::U32) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::Str{n_chars}, ValType::U40) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::Str{n_chars}, ValType::U48) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::Str{n_chars}, ValType::U56) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      (IdType::Str{n_chars}, ValType::U64) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::Str{n_chars}, ValType::U24) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::Str{n_chars}, ValType::U32) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::Str{n_chars}, ValType::U40) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::Str{n_chars}, ValType::U48) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::Str{n_chars}, ValType::U56) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      (IdType::Str{n_chars}, ValType::U64) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
 
-      (IdType::Str{n_chars}, ValType::I24) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &I24RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::Str{n_chars}, ValType::I32) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &I32RW, |a: &i32, b: &i32| (a - b).abs()),
-      (IdType::Str{n_chars}, ValType::I40) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &I40RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::Str{n_chars}, ValType::I48) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &I48RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::Str{n_chars}, ValType::I56) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &I56RW, |a: &i64, b: &i64| (a - b).abs()),
-      (IdType::Str{n_chars}, ValType::I64) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &I64RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::Str{n_chars}, ValType::I24) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::Str{n_chars}, ValType::I32) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      (IdType::Str{n_chars}, ValType::I40) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::Str{n_chars}, ValType::I48) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::Str{n_chars}, ValType::I56) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      (IdType::Str{n_chars}, ValType::I64) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
-      (IdType::Str{n_chars}, ValType::F32) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
-      (IdType::Str{n_chars}, ValType::F64) => p.exec(&self, &StrRW{n_bytes: *n_chars}, &F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::Str{n_chars}, ValType::F32) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      (IdType::Str{n_chars}, ValType::F64) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
-      (IdType::Str{n_chars: n_chars_i}, ValType::Str{n_chars: n_chars_v}) => p.exec(&self, &StrRW{n_bytes: *n_chars_i}, &StrRW{n_bytes: *n_chars_v}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
+      (IdType::Str{n_chars: n_chars_i}, ValType::Str{n_chars: n_chars_v}) => p.exec(self.clone(), StrRW{n_bytes: *n_chars_i}, StrRW{n_bytes: *n_chars_v}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
 
       _ => Err(std::io::Error::new(ErrorKind::Other, "Case not supported yet!")),
     }
@@ -471,22 +479,23 @@ impl IdVal {
 
 
 
-
-pub struct EntryOpt<I, V> where V: Ord { // I: Sized, V: Sized + Ord {
+#[derive(Debug, Clone)]
+pub struct EntryOpt<I: Id, V: Val> {
   /// Row identifier
   id: I,
   /// Indexed value
   val: Option<V>,
 }
 
-pub struct Entry<I, V> where V: Ord { // I: Sized, V: Sized + Ord {
+#[derive(Debug, Clone)]
+pub struct Entry<I: Id, V: Val> { // I: Sized, V: Sized + Ord {
   /// Row identifier
   pub id: I,
   /// Indexed value
   pub val: V,
 }
 
-impl <I, V> Entry<I, V> where V: Ord {
+impl<I: Id, V: Val>  Entry<I, V> {
   
   /*fn n_bytes<IRW, VRW>(&self, id_codec: &IRW, val_codec: &VRW) -> usize
   where IRW: ReadWrite<Type=I>,
@@ -529,25 +538,25 @@ impl <I, V> Entry<I, V> where V: Ord {
   }
 }
 
-impl <I, V> PartialOrd for Entry<I, V> where V: Ord {
+impl<I: Id, V: Val>  PartialOrd for Entry<I, V> {
   fn partial_cmp(&self, other: &Entry<I, V>) -> Option<Ordering> {
     Some(self.cmp(other))
   }
 }
 
-impl <I, V> Ord for Entry<I, V> where V: Ord {
+impl<I: Id, V: Val>  Ord for Entry<I, V> {
   fn cmp(&self, other: &Entry<I, V>) -> Ordering {
     self.val.cmp(&other.val)
   }
 }
 
-impl <I, V> PartialEq for Entry<I, V> where V: Ord {
+impl<I: Id, V: Val>  PartialEq for Entry<I, V>  {
   fn eq(&self, other: &Entry<I, V>) -> bool {
     self.val == other.val
   }
 }
 
-impl <I, V> Eq for Entry<I, V> where V: Ord { }
+impl<I: Id, V: Val>  Eq for Entry<I, V> where V: Ord { }
 
 
 pub struct EntryRaw<'a, I, V> 

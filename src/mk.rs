@@ -81,7 +81,7 @@ impl <R: Read> Process for MkIndex<R> {
 
   type Output = usize;
 
-  fn exec<I, V, D, IRW, VRW>(self, types: &IdVal, id_rw: &IRW, val_rw: &VRW, dist: D) -> Result<Self::Output, Error>
+  fn exec<I, V, D, IRW, VRW>(self, types: IdVal, id_rw: IRW, val_rw: VRW, dist: D) -> Result<Self::Output, Error>
     where I: Id,
           V: Val,
           D: Fn(&V, &V) -> V,
@@ -91,7 +91,7 @@ impl <R: Read> Process for MkIndex<R> {
     let i_val = self.col_indices.val;
     if self.supports_null {
       match self.col_indices.id { 
-        None => self.mk_with_null(types, id_rw, val_rw, |i, csv_row|
+        None => self.mk_with_null(&types, &id_rw, &val_rw, |i, csv_row|
           Ok(
             EntryOpt {
               id: I::from_u64(i as u64),
@@ -99,7 +99,7 @@ impl <R: Read> Process for MkIndex<R> {
             }
           )
         ),
-        Some(i_id) => self.mk_with_null(types, id_rw, val_rw, |_, csv_row|
+        Some(i_id) => self.mk_with_null(&types, &id_rw, &val_rw, |_, csv_row|
           Ok (
             EntryOpt {
               id: get_with_err::<I>(&csv_row, i_id, "id")?,
@@ -110,7 +110,7 @@ impl <R: Read> Process for MkIndex<R> {
       }
     } else {
       match self.col_indices.id {
-        None => self.mk_no_null(types, id_rw, val_rw, |i, csv_row|
+        None => self.mk_no_null(&types, &id_rw, &val_rw, |i, csv_row|
           Ok(
             Entry {
               id: I::from_u64(i as u64),
@@ -118,7 +118,7 @@ impl <R: Read> Process for MkIndex<R> {
             }
           )
         ),
-        Some(i_id) => self.mk_no_null(types, id_rw, val_rw, |_, csv_row|
+        Some(i_id) => self.mk_no_null(&types, &id_rw, &val_rw, |_, csv_row|
           Ok (
             Entry {
               id: get_with_err::<I>(&csv_row, i_id, "id")?,
