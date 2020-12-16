@@ -136,7 +136,7 @@ impl Process for QueryIter {
             let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type"))?;
             let visitor = VisitorExact::new(v);
             let visitor = root.visit(visitor, &self.mmap[self.data_starting_byte..], &id_rw, &val_rw)?;
-            Ok(Box::new(visitor.map(|e| e.id.to_u64())))
+            Ok(Box::new(visitor.entry.into_iter().map(|e| e.id.to_u64())))
           },
           ValOrFile::List{ file } => {
             Ok(Box::new(

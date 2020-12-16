@@ -120,14 +120,6 @@ impl<I: Id, V: Val> Visitor for VisitorExact<I, V> {
   }
 }
 
-impl<I: Id, V: Val> Iterator for VisitorExact<I, V> {
-  type Item = Entry<I, V>;
-
-  fn next(&mut self) -> Option<Self::Item> {
-    self.entry.clone()
-  }
-}
-
 /// Look for all values, count only
 pub struct VisitorAllCount<I: Id, V: Val> {
   center: V,
