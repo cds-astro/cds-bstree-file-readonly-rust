@@ -17,7 +17,7 @@ use crate::{
   visitors::*,
 };
 
-#[derive(Clone, Debug, StructOpt)]
+#[derive(Clone, Debug, StructOpt, serde::Serialize, serde::Deserialize)]
 pub enum Mode {
   #[structopt(name = "info")]
   /// Returns tree metadata information
@@ -76,7 +76,7 @@ pub enum Mode {
   }
 }
 
-#[derive(Clone, Debug, StructOpt)]
+#[derive(Clone, Debug, StructOpt, serde::Serialize, serde::Deserialize)]
 pub enum ValOrFile {
   #[structopt(name = "value")]
   /// Execute the command for the specific given value

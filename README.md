@@ -67,6 +67,14 @@ It leads to:
     - `mkbst` (tree creation) is about 9/65 MB in release/debug mode
     - `qbst` (tree query) is about 29/116 MB in release/debug mode
 
+
+Other tools
+-----------
+
+For a larger project that may fullfill the need (an more), see:
+* [seld](https://github.com/spacejam/sled) and this [paper](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/bw-tree-icde2013-final.pdf)
+
+
 Install
 -------
 

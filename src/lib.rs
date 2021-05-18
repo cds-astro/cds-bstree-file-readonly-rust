@@ -293,20 +293,6 @@ pub trait Process {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IdVal(IdType, ValType);
 
-//const STRING_DIST: impl Fn(&String, &String) -> String = |a: &String, b: String| panic!("No string distance!");
-
-// pub struct StringDist {}
-
-/*impl Fn(&String, &String) for StringDist {
-  type Output = String;
-
-  fn call(&self, args: (&String, &String)) -> Self::Output {
-    panic!("No string distance!");
-  }
-}*/
-
-
-
 impl IdVal {
 
   pub fn id_type(&self) -> &IdType {
@@ -322,7 +308,7 @@ impl IdVal {
     let ds = |a: &String, b: String| panic!("No string distance!");
     // Here we use static dispatch with monomorphization
     // - pro: one version of the code per possible tuple => very good performances!!
-    // - con: one version of the code per possible tuple => compiled code may be large!!
+    // - con: one version of the code per possible tuple => slow compilation + compiled code may be large!!
     match (&self.0, &self.1) {
       // IdType U24, ValType: All
       (IdType::U24, ValType::U24) => p.exec(self.clone(), U24RW, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
