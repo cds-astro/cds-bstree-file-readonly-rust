@@ -104,11 +104,11 @@ impl<I: Id, V: Val> Visitor for VisitorExact<I, V> {
     self.entry = Some(entry)
   }
 
-  fn visit_le_center(&mut self, entry: Entry<Self::I, Self::V>) {
+  fn visit_le_center(&mut self, _entry: Entry<Self::I, Self::V>) {
     unreachable!() // because visit_desc always returns false
   }
 
-  fn visit_he_center(&mut self, entry: Entry<Self::I, Self::V>) {
+  fn visit_he_center(&mut self, _entry: Entry<Self::I, Self::V>) {
     unreachable!() // because visit_asc always returns false
   }
 
@@ -191,7 +191,7 @@ pub struct VisitorAll<I: Id, V: Val> {
 }
 
 impl<I: Id, V: Val> VisitorAll<I, V> {
-  pub fn new(center: V, limit: usize) -> VisitorAll<I, V> {
+  pub fn new(center: V, _limit: usize) -> VisitorAll<I, V> {
     Self {
       center,
       limit: 0,

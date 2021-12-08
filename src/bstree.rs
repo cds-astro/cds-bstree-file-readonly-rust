@@ -1,25 +1,22 @@
 //! See the tree terminology here: https://en.wikipedia.org/wiki/Tree_(data_structure)
 use serde::{self, Serialize, Deserialize};
-use memmap::{Mmap, MmapMut, MmapOptions};
+use memmap::{Mmap, MmapMut};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::io::{
   Error, ErrorKind, Read, Write
 };
-use std::fs::{self, OpenOptions, File};
+use std::fs::OpenOptions;
 use std::path::PathBuf;
-use std::str::{from_utf8, FromStr};
 use std::num::ParseIntError;
-use std::time::{Duration, Instant};
 
-
-use crate::{Id, Val, IdType, ValType, IdVal, Entry, FromU64, RawEntries, Process};
+use crate::{Id, Val, IdVal, Entry, RawEntries, Process};
 use crate::rw::ReadWrite;
 use crate::cliargs::memsize::MemSizeArgs;
 use crate::visitors::*;
 
-const FILE_TYPE: &'static [u8; 10] = b"BSTreeFile";
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const FILE_TYPE: &[u8; 10] = b"BSTreeFile";
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub trait HasByteSize {
   /// Returns the total size of the sub-tree, in bytes.
@@ -103,11 +100,11 @@ pub enum Root {
 impl HasByteSize for Root {
   fn byte_size(&self, entry_byte_size: usize) -> usize {
     match &self {
-      &Root::L1Leaf(leaf) => leaf.byte_size(entry_byte_size),
-      &Root::L1Node(node) => node.byte_size(entry_byte_size),
-      &Root::LDNode(node) => node.byte_size(entry_byte_size),
-      &Root::RootL1Node(node) => node.byte_size(entry_byte_size),
-      &Root::RootLDNode(node) => node.byte_size(entry_byte_size),
+      Root::L1Leaf(leaf) => leaf.byte_size(entry_byte_size),
+      Root::L1Node(node) => node.byte_size(entry_byte_size),
+      Root::LDNode(node) => node.byte_size(entry_byte_size),
+      Root::RootL1Node(node) => node.byte_size(entry_byte_size),
+      Root::RootLDNode(node) => node.byte_size(entry_byte_size),
     }
   }
 }
@@ -123,11 +120,11 @@ impl SubTreeW for Root {
           T: Iterator<Item=Entry<I, V>> {
     // Simple delegation
     match &self {
-      &Root::L1Leaf(leaf) => leaf.write(entries_iterator, id_rw, val_rw, dest),
-      &Root::L1Node(node) => node.write(entries_iterator, id_rw, val_rw, dest),
-      &Root::LDNode(node) => node.write(entries_iterator, id_rw, val_rw, dest),
-      &Root::RootL1Node(node) => node.write(entries_iterator, id_rw, val_rw, dest),
-      &Root::RootLDNode(node) => node.write(entries_iterator, id_rw, val_rw, dest),
+      Root::L1Leaf(leaf) => leaf.write(entries_iterator, id_rw, val_rw, dest),
+      Root::L1Node(node) => node.write(entries_iterator, id_rw, val_rw, dest),
+      Root::LDNode(node) => node.write(entries_iterator, id_rw, val_rw, dest),
+      Root::RootL1Node(node) => node.write(entries_iterator, id_rw, val_rw, dest),
+      Root::RootLDNode(node) => node.write(entries_iterator, id_rw, val_rw, dest),
     }
   }
 }
@@ -142,11 +139,11 @@ impl SubTreeR for Root {
           VRW: ReadWrite<Type=V> {
     // Simple delegation
     match &self {
-      &Root::L1Leaf(leaf) => leaf.get(value, raw_entries, id_rw, val_rw),
-      &Root::L1Node(node) => node.get(value, raw_entries, id_rw, val_rw),
-      &Root::LDNode(node) => node.get(value, raw_entries, id_rw, val_rw),
-      &Root::RootL1Node(node) => node.get(value, raw_entries, id_rw, val_rw),
-      &Root::RootLDNode(node) => node.get(value, raw_entries, id_rw, val_rw),
+      Root::L1Leaf(leaf) => leaf.get(value, raw_entries, id_rw, val_rw),
+      Root::L1Node(node) => node.get(value, raw_entries, id_rw, val_rw),
+      Root::LDNode(node) => node.get(value, raw_entries, id_rw, val_rw),
+      Root::RootL1Node(node) => node.get(value, raw_entries, id_rw, val_rw),
+      Root::RootLDNode(node) => node.get(value, raw_entries, id_rw, val_rw),
     }
   }
 
@@ -159,11 +156,11 @@ impl SubTreeR for Root {
           T: Visitor<I=I, V=V> {
     // Simple delegation
     match &self {
-      &Root::L1Leaf(leaf) => leaf.visit_desc(visitor, raw_entries, id_rw, val_rw),
-      &Root::L1Node(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
-      &Root::LDNode(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
-      &Root::RootL1Node(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
-      &Root::RootLDNode(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
+      Root::L1Leaf(leaf) => leaf.visit_desc(visitor, raw_entries, id_rw, val_rw),
+      Root::L1Node(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
+      Root::LDNode(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
+      Root::RootL1Node(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
+      Root::RootLDNode(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
     }
   }
 
@@ -176,11 +173,11 @@ impl SubTreeR for Root {
           T: Visitor<I=I, V=V> {
     // Simple delegation
     match &self {
-      &Root::L1Leaf(leaf) => leaf.visit(visitor, raw_entries, id_rw, val_rw),
-      &Root::L1Node(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
-      &Root::LDNode(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
-      &Root::RootL1Node(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
-      &Root::RootLDNode(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
+      Root::L1Leaf(leaf) => leaf.visit(visitor, raw_entries, id_rw, val_rw),
+      Root::L1Node(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
+      Root::LDNode(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
+      Root::RootL1Node(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
+      Root::RootLDNode(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
     }
   }
 
@@ -193,11 +190,11 @@ impl SubTreeR for Root {
           T: Visitor<I=I, V=V> {
     // Simple delegation
     match &self {
-      &Root::L1Leaf(leaf) => leaf.visit_asc(visitor, raw_entries, id_rw, val_rw),
-      &Root::L1Node(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
-      &Root::LDNode(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
-      &Root::RootL1Node(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
-      &Root::RootLDNode(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
+      Root::L1Leaf(leaf) => leaf.visit_asc(visitor, raw_entries, id_rw, val_rw),
+      Root::L1Node(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
+      Root::LDNode(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
+      Root::RootL1Node(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
+      Root::RootLDNode(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
     }
   }
 }
@@ -212,9 +209,9 @@ pub enum SubTree {
 impl HasByteSize for SubTree {
   fn byte_size(&self, entry_byte_size: usize) -> usize {
     match &self {
-      &SubTree::L1Leaf(leaf) => leaf.byte_size(entry_byte_size),
-      &SubTree::L1Node(node) => node.byte_size(entry_byte_size),
-      &SubTree::LDNode(node) => node.byte_size(entry_byte_size),
+      SubTree::L1Leaf(leaf) => leaf.byte_size(entry_byte_size),
+      SubTree::L1Node(node) => node.byte_size(entry_byte_size),
+      SubTree::LDNode(node) => node.byte_size(entry_byte_size),
     }
   }
 }
@@ -231,9 +228,9 @@ impl SubTreeW for SubTree {
           T: Iterator<Item=Entry<I, V>> {
     // Simple delegation
     match &self {
-      &SubTree::L1Leaf(leaf) => leaf.write(entries_iterator, id_rw, val_rw, dest),
-      &SubTree::L1Node(node) => node.write(entries_iterator, id_rw, val_rw, dest),
-      &SubTree::LDNode(node) => node.write(entries_iterator, id_rw, val_rw, dest),
+      SubTree::L1Leaf(leaf) => leaf.write(entries_iterator, id_rw, val_rw, dest),
+      SubTree::L1Node(node) => node.write(entries_iterator, id_rw, val_rw, dest),
+      SubTree::LDNode(node) => node.write(entries_iterator, id_rw, val_rw, dest),
     }
   }
 }
@@ -248,9 +245,9 @@ impl SubTreeR for SubTree {
           VRW: ReadWrite<Type=V> {
     // Simple delegation
     match &self {
-      &SubTree::L1Leaf(leaf) => leaf.get(value, raw_entries, id_rw, val_rw),
-      &SubTree::L1Node(node) => node.get(value, raw_entries, id_rw, val_rw),
-      &SubTree::LDNode(node) => node.get(value, raw_entries, id_rw, val_rw),
+      SubTree::L1Leaf(leaf) => leaf.get(value, raw_entries, id_rw, val_rw),
+      SubTree::L1Node(node) => node.get(value, raw_entries, id_rw, val_rw),
+      SubTree::LDNode(node) => node.get(value, raw_entries, id_rw, val_rw),
     }
   }
 
@@ -263,9 +260,9 @@ impl SubTreeR for SubTree {
           T: Visitor<I=I, V=V> {
     // Simple delegation
     match &self {
-      &SubTree::L1Leaf(leaf) => leaf.visit_desc(visitor, raw_entries, id_rw, val_rw),
-      &SubTree::L1Node(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
-      &SubTree::LDNode(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
+      SubTree::L1Leaf(leaf) => leaf.visit_desc(visitor, raw_entries, id_rw, val_rw),
+      SubTree::L1Node(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
+      SubTree::LDNode(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
     }
   }
 
@@ -278,9 +275,9 @@ impl SubTreeR for SubTree {
           T: Visitor<I=I, V=V> {
     // Simple delegation
     match &self {
-      &SubTree::L1Leaf(leaf) => leaf.visit(visitor, raw_entries, id_rw, val_rw),
-      &SubTree::L1Node(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
-      &SubTree::LDNode(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
+      SubTree::L1Leaf(leaf) => leaf.visit(visitor, raw_entries, id_rw, val_rw),
+      SubTree::L1Node(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
+      SubTree::LDNode(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
     }
   }
 
@@ -293,9 +290,9 @@ impl SubTreeR for SubTree {
           T: Visitor<I=I, V=V> {
     // Simple delegation
     match &self {
-      &SubTree::L1Leaf(leaf) => leaf.visit_asc(visitor, raw_entries, id_rw, val_rw),
-      &SubTree::L1Node(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
-      &SubTree::LDNode(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
+      SubTree::L1Leaf(leaf) => leaf.visit_asc(visitor, raw_entries, id_rw, val_rw),
+      SubTree::L1Node(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
+      SubTree::LDNode(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
     }
   }
 }
@@ -309,8 +306,8 @@ pub enum LDSubTree {
 impl HasByteSize for LDSubTree {
   fn byte_size(&self, entry_byte_size: usize) -> usize {
     match &self {
-      &LDSubTree::L1Node(node) => node.byte_size(entry_byte_size),
-      &LDSubTree::LDNode(node) => node.byte_size(entry_byte_size),
+      LDSubTree::L1Node(node) => node.byte_size(entry_byte_size),
+      LDSubTree::LDNode(node) => node.byte_size(entry_byte_size),
     }
   }  
 }
@@ -325,8 +322,8 @@ impl SubTreeW for LDSubTree {
           VRW: ReadWrite<Type=V>,
           T: Iterator<Item=Entry<I, V>> {
     match &self {
-      &LDSubTree::L1Node(node) => node.write(entries_iterator, id_rw, val_rw, dest),
-      &LDSubTree::LDNode(node) => node.write(entries_iterator, id_rw, val_rw, dest),
+      LDSubTree::L1Node(node) => node.write(entries_iterator, id_rw, val_rw, dest),
+      LDSubTree::LDNode(node) => node.write(entries_iterator, id_rw, val_rw, dest),
     }
   }
 }
@@ -340,8 +337,8 @@ impl SubTreeR for LDSubTree {
           IRW: ReadWrite<Type=I>,
           VRW: ReadWrite<Type=V> {
     match &self {
-      &LDSubTree::L1Node(node) => node.get(value, raw_entries, id_rw, val_rw),
-      &LDSubTree::LDNode(node) => node.get(value, raw_entries, id_rw, val_rw),
+      LDSubTree::L1Node(node) => node.get(value, raw_entries, id_rw, val_rw),
+      LDSubTree::LDNode(node) => node.get(value, raw_entries, id_rw, val_rw),
     }
   }
 
@@ -354,8 +351,8 @@ impl SubTreeR for LDSubTree {
           T: Visitor<I=I, V=V> {
     // Simple delegation
     match &self {
-      &LDSubTree::L1Node(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
-      &LDSubTree::LDNode(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
+      LDSubTree::L1Node(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
+      LDSubTree::LDNode(node) => node.visit_desc(visitor, raw_entries, id_rw, val_rw),
     }
   }
   fn visit<I, V, IRW, VRW, T>(&self, visitor: T, raw_entries: &[u8], id_rw: &IRW, val_rw: &VRW)
@@ -367,8 +364,8 @@ impl SubTreeR for LDSubTree {
           T: Visitor<I=I, V=V> {
     // Simple delegation
     match &self {
-      &LDSubTree::L1Node(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
-      &LDSubTree::LDNode(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
+      LDSubTree::L1Node(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
+      LDSubTree::LDNode(node) => node.visit(visitor, raw_entries, id_rw, val_rw),
     }
   }
 
@@ -381,8 +378,8 @@ impl SubTreeR for LDSubTree {
           T: Visitor<I=I, V=V> {
     // Simple delegation
     match &self {
-      &LDSubTree::L1Node(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
-      &LDSubTree::LDNode(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
+      LDSubTree::L1Node(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
+      LDSubTree::LDNode(node) => node.visit_asc(visitor, raw_entries, id_rw, val_rw),
     }
   }
 
@@ -428,17 +425,17 @@ impl SubTreeW for RootL1Node {
     // Same algo as L1Node except that the last element is the righmost-subtree
     let subtree_byte_size = self.sub_tree.byte_size(entry_byte_size);
     let (mut l1_buff, r_buff) = dest.split_at_mut(self.n_elems * entry_byte_size);
-    let (mut st_buff, mut r_buff) = r_buff.split_at_mut(self.n_elems * subtree_byte_size);
+    let (mut st_buff, r_buff) = r_buff.split_at_mut(self.n_elems * subtree_byte_size);
     for _ in 0..self.n_elems {
-      let (mut curr_buff, subtree_buff) = st_buff.split_at_mut(subtree_byte_size);
-      it = self.sub_tree.write(it, id_rw, val_rw, &mut curr_buff)?;
+      let (curr_buff, subtree_buff) = st_buff.split_at_mut(subtree_byte_size);
+      it = self.sub_tree.write(it, id_rw, val_rw, curr_buff)?;
       st_buff = subtree_buff;
       // Write the current entry
       it.next().ok_or_else(|| Error::new(ErrorKind::Other, "Iterator depleted!"))?
         .write(&mut l1_buff, id_rw, val_rw)?;
     }
     // Plus the rightmost subtree
-    it = self.rightmost_subtree.write(it, id_rw, val_rw, &mut r_buff)?;
+    it = self.rightmost_subtree.write(it, id_rw, val_rw, r_buff)?;
     assert_eq!(st_buff.len(), 0);
     Ok(it)
   }
@@ -471,7 +468,7 @@ impl SubTreeR for RootL1Node {
     }
   }
 
-  fn visit_desc<I, V, IRW, VRW, T>(&self, mut visitor: T, raw_entries: &[u8], id_rw: &IRW, val_rw: &VRW)
+  fn visit_desc<I, V, IRW, VRW, T>(&self, mut _visitor: T, _raw_entries: &[u8], _id_rw: &IRW, _val_rw: &VRW)
                                    -> Result<T, Error>
     where I: Id,
           V: Val,
@@ -488,14 +485,14 @@ impl SubTreeR for RootL1Node {
           IRW: ReadWrite<Type=I>,
           VRW: ReadWrite<Type=V>,
           T: Visitor<I=I, V=V> {
-    debug_assert!(raw_entries.len() > 0);
+    debug_assert!(!raw_entries.is_empty());
     let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
     assert_eq!(self.byte_size(entry_byte_size), raw_entries.len(), "Wrong byte size: {} != {}", self.byte_size(entry_byte_size), raw_entries.len());
     // Same algo as L1Node except that the last element is the righmost-subtree
     let subtree_byte_size = self.sub_tree.byte_size(entry_byte_size);
     let (l1_buff, r_buff) = raw_entries.split_at(self.n_elems * entry_byte_size);
     let mut l1_entries = RawEntries::new(l1_buff, id_rw, val_rw);
-    let (mut l, mut r) = match l1_entries.binary_search(&visitor.center())? {
+    let (mut l, mut r) = match l1_entries.binary_search(visitor.center())? {
       Ok(i) => {
         visitor.visit_center(l1_entries.get_entry(i)?);
         if visitor.visit_desc() {
@@ -552,7 +549,7 @@ impl SubTreeR for RootL1Node {
 
   }
 
-  fn visit_asc<I, V, IRW, VRW, T>(&self, mut visitor: T, raw_entries: &[u8], id_rw: &IRW, val_rw: &VRW)
+  fn visit_asc<I, V, IRW, VRW, T>(&self, mut _visitor: T, _raw_entries: &[u8], _id_rw: &IRW, _val_rw: &VRW)
                                   -> Result<T, Error>
     where I: Id,
           V: Val,
@@ -608,13 +605,13 @@ impl SubTreeW for RootLDNode {
     // Split the 4 blocs [ld][l1, l1, ..., l1][ST, ST, ..., ST][RootSubTree]
     let (mut ld_buff, r_buff) = dest.split_at_mut(self.n_elems * entry_byte_size);
     let (mut l1_buff, r_buff) = r_buff.split_at_mut(self.n_elems * l1page_byte_size);
-    let (mut st_buff, mut r_buff) = r_buff.split_at_mut(self.n_elems * subtree_group_byte_size);
+    let (mut st_buff, r_buff) = r_buff.split_at_mut(self.n_elems * subtree_group_byte_size);
     assert_eq!(r_buff.len(), self.rightmost_subtree.byte_size(entry_byte_size));
     for _ in 0..self.n_elems {
       // Sub-split the [l1, l1, ..., l1] and [ST, ST, ..., ST] blocks
-      let (mut cl1_buff, tl1_buff) = l1_buff.split_at_mut(l1page_byte_size);
-      let (mut cst_buff, tst_buff) = st_buff.split_at_mut(subtree_group_byte_size);
-      it = write_l1page(it, id_rw, val_rw, &mut cl1_buff, &self.sub_tree, &mut cst_buff)?;
+      let (cl1_buff, tl1_buff) = l1_buff.split_at_mut(l1page_byte_size);
+      let (cst_buff, tst_buff) = st_buff.split_at_mut(subtree_group_byte_size);
+      it = write_l1page(it, id_rw, val_rw, cl1_buff, &self.sub_tree, cst_buff)?;
       l1_buff = tl1_buff;
       st_buff = tst_buff;
       // Write current entry
@@ -622,7 +619,7 @@ impl SubTreeW for RootLDNode {
         .write(&mut ld_buff, id_rw, val_rw)?;
     }
     // And write the rightmost subtree
-    it = self.rightmost_subtree.write(it, id_rw, val_rw, &mut r_buff)?;
+    it = self.rightmost_subtree.write(it, id_rw, val_rw, r_buff)?;
     assert_eq!(l1_buff.len(), 0, "Wrong L1 buff size: {}", l1_buff.len());
     assert_eq!(st_buff.len(), 0, "Wrong ST buff size: {}", st_buff.len());
     Ok(it)
@@ -652,7 +649,7 @@ impl SubTreeR for RootLDNode {
           let limit = self.n_elems * (l1page_byte_size + subtree_group_byte_size);
           let (_, r_buff) = r_buff.split_at(limit);
           assert_eq!(r_buff.len(), self.rightmost_subtree.byte_size(entry_byte_size));
-          self.rightmost_subtree.get(value, &r_buff, id_rw, val_rw)
+          self.rightmost_subtree.get(value, r_buff, id_rw, val_rw)
         } else {
           let (l1_buff, st_buff) = r_buff.split_at(self.n_elems * l1page_byte_size);
           let from_l1 = i * l1page_byte_size;
@@ -665,7 +662,7 @@ impl SubTreeR for RootLDNode {
     }
   }
 
-  fn visit_desc<I, V, IRW, VRW, T>(&self, visitor: T, raw_entries: &[u8], id_rw: &IRW, val_rw: &VRW)
+  fn visit_desc<I, V, IRW, VRW, T>(&self, _visitor: T, _raw_entries: &[u8], _id_rw: &IRW, _val_rw: &VRW)
                                    -> Result<T, Error>
     where I: Id,
           V: Val,
@@ -692,7 +689,7 @@ impl SubTreeR for RootLDNode {
     let (l1_buff, r_buff) = r_buff.split_at(self.n_elems * l1page_byte_size);
     let (st_buff, r_buff) = r_buff.split_at(self.n_elems * subtree_group_byte_size);
     let mut entries = RawEntries::new(ld_buff, id_rw, val_rw);
-    let (mut l, mut r) = match entries.binary_search(&visitor.center())? {
+    let (mut l, mut r) = match entries.binary_search(visitor.center())? {
       Ok(i) => {
         visitor.visit_center(entries.get_entry(i)?);
         if visitor.visit_desc() {
@@ -712,7 +709,7 @@ impl SubTreeR for RootLDNode {
             visitor = visit_asc_l1page(visitor, id_rw, val_rw, &l1_buff[from_l1..to_l1],
                                        &self.sub_tree, &st_buff[from_st..to_st])?;
           } else {
-            visitor = self.rightmost_subtree.visit_asc(visitor, &r_buff[..], id_rw, val_rw)?;
+            visitor = self.rightmost_subtree.visit_asc(visitor, r_buff, id_rw, val_rw)?;
           }
         }
         (i as i32 - 1, i + 1)
@@ -726,7 +723,7 @@ impl SubTreeR for RootLDNode {
           visitor = visit_l1page(visitor, id_rw, val_rw, &l1_buff[from_l1..to_l1],
                                  &self.sub_tree, &st_buff[from_st..to_st])?;
         } else {
-          visitor = self.rightmost_subtree.visit(visitor, &r_buff[..], id_rw, val_rw)?;
+          visitor = self.rightmost_subtree.visit(visitor, r_buff, id_rw, val_rw)?;
         }
         (i as i32 - 1, i)
       },
@@ -756,13 +753,13 @@ impl SubTreeR for RootLDNode {
         visitor = visit_asc_l1page(visitor, id_rw, val_rw, &l1_buff[from_l1..to_l1],
                                    &self.sub_tree, &st_buff[from_st..to_st])?;
       } else {
-        visitor = self.rightmost_subtree.visit_asc(visitor, &r_buff[..], id_rw, val_rw)?;
+        visitor = self.rightmost_subtree.visit_asc(visitor, r_buff, id_rw, val_rw)?;
       }
     }
     Ok(visitor)
   }
 
-  fn visit_asc<I, V, IRW, VRW, T>(&self, visitor: T, raw_entries: &[u8], id_rw: &IRW, val_rw: &VRW)
+  fn visit_asc<I, V, IRW, VRW, T>(&self, _visitor: T, _raw_entries: &[u8], _id_rw: &IRW, _val_rw: &VRW)
                                   -> Result<T, Error>
     where I: Id,
           V: Val,
@@ -853,7 +850,7 @@ impl SubTreeR for L1Leaf {
           T: Visitor<I=I, V=V> {
     debug_assert_eq!(self.byte_size(id_rw.n_bytes() + val_rw.n_bytes()), raw_entries.len());
     let mut entries = RawEntries::new(raw_entries, id_rw, val_rw);
-    let (mut l, mut r) = match entries.binary_search(&visitor.center())? {
+    let (mut l, mut r) = match entries.binary_search(visitor.center())? {
       Ok(i) => {
         visitor.visit_center(entries.get_entry(i)?);
         (i as i32 - 1, i + 1)
@@ -925,8 +922,8 @@ impl SubTreeW for L1Node {
           T: Iterator<Item=Entry<I, V>> {
     let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
     assert_eq!(self.byte_size(entry_byte_size), dest.len(), "Wrong buffer size");
-    let (mut l1_buff, mut st_buff) = dest.split_at_mut(self.n_elems * entry_byte_size);
-    it = write_l1page(it, id_rw, val_rw, &mut l1_buff, self.sub_tree.as_ref(), &mut st_buff)?;
+    let (l1_buff, st_buff) = dest.split_at_mut(self.n_elems * entry_byte_size);
+    it = write_l1page(it, id_rw, val_rw, l1_buff, self.sub_tree.as_ref(), st_buff)?;
     Ok(it)
   }
 }
@@ -945,7 +942,7 @@ impl SubTreeR for L1Node {
     get_l1page(val, id_rw, val_rw, l1_buff, self.sub_tree.as_ref(), st_buff)
   }
 
-  fn visit_desc<I, V, IRW, VRW, T>(&self, mut visitor: T, raw_entries: &[u8], id_rw: &IRW, val_rw: &VRW)
+  fn visit_desc<I, V, IRW, VRW, T>(&self, visitor: T, raw_entries: &[u8], id_rw: &IRW, val_rw: &VRW)
                                    -> Result<T, Error>
     where I: Id,
           V: Val,
@@ -959,7 +956,7 @@ impl SubTreeR for L1Node {
     visit_desc_l1page(visitor, id_rw, val_rw, l1_buff, self.sub_tree.as_ref(), st_buff)
   }
 
-  fn visit<I, V, IRW, VRW, T>(&self, mut visitor: T, raw_entries: &[u8], id_rw: &IRW, val_rw: &VRW)
+  fn visit<I, V, IRW, VRW, T>(&self, visitor: T, raw_entries: &[u8], id_rw: &IRW, val_rw: &VRW)
                               -> Result<T, Error>
     where I: Id,
           V: Val,
@@ -972,7 +969,7 @@ impl SubTreeR for L1Node {
     visit_l1page(visitor, id_rw, val_rw, l1_buff, self.sub_tree.as_ref(), st_buff)
   }
 
-  fn visit_asc<I, V, IRW, VRW, T>(&self, mut visitor: T, raw_entries: &[u8], id_rw: &IRW, val_rw: &VRW)
+  fn visit_asc<I, V, IRW, VRW, T>(&self, visitor: T, raw_entries: &[u8], id_rw: &IRW, val_rw: &VRW)
                                   -> Result<T, Error>
     where I: Id,
           V: Val,
@@ -1031,9 +1028,9 @@ impl SubTreeW for LDNode {
     assert_eq!(st_buff.len(), (self.n_elems + 1) * subtree_group_byte_size);
     for _ in 0..self.n_elems {
       // Sub-split the [l1, l1, ..., l1] and [ST, ST, ..., ST] blocks
-      let (mut cl1_buff, tl1_buff) = l1_buff.split_at_mut(l1page_byte_size);
-      let (mut cst_buff, tst_buff) = st_buff.split_at_mut(subtree_group_byte_size);
-      it = write_l1page(it, id_rw, val_rw, &mut cl1_buff, self.sub_tree.as_ref(), &mut cst_buff)?;
+      let (cl1_buff, tl1_buff) = l1_buff.split_at_mut(l1page_byte_size);
+      let (cst_buff, tst_buff) = st_buff.split_at_mut(subtree_group_byte_size);
+      it = write_l1page(it, id_rw, val_rw, cl1_buff, self.sub_tree.as_ref(), cst_buff)?;
       l1_buff = tl1_buff;
       st_buff = tst_buff;
       // Write the current entry
@@ -1041,7 +1038,7 @@ impl SubTreeW for LDNode {
         .write(&mut ld_buff, id_rw, val_rw)?;
     }
     // Write the last sub-tree
-    it = write_l1page(it, id_rw, val_rw, &mut l1_buff, self.sub_tree.as_ref(), &mut st_buff)?;
+    it = write_l1page(it, id_rw, val_rw, l1_buff, self.sub_tree.as_ref(), st_buff)?;
     assert_eq!(ld_buff.len(), 0);
     Ok(it)
   }
@@ -1088,9 +1085,9 @@ impl SubTreeR for LDNode {
     // Split the 3 blocs [ld][l1, l1, ..., l1][ST, ST, ..., ST]
     let l1page_byte_size = self.n_l1page_elems * entry_byte_size;
     let subtree_group_byte_size = (self.n_l1page_elems + 1) * self.sub_tree.byte_size(entry_byte_size);
-    let (ld_buff, st_buff) = raw_entries.split_at(self.n_elems * entry_byte_size);
+    let (_ld_buff, st_buff) = raw_entries.split_at(self.n_elems * entry_byte_size);
     let (l1_buff, st_buff) = st_buff.split_at((self.n_elems + 1) * l1page_byte_size);
-    let mut entries = RawEntries::new(ld_buff, id_rw, val_rw);
+    // let mut entries = RawEntries::new(ld_buff, id_rw, val_rw);
 
     let from_l1 = self.n_elems * l1page_byte_size;
     let to_l1 = from_l1 + l1page_byte_size;
@@ -1123,7 +1120,7 @@ impl SubTreeR for LDNode {
     let (ld_buff, st_buff) = raw_entries.split_at(self.n_elems * entry_byte_size);
     let (l1_buff, st_buff) = st_buff.split_at((self.n_elems + 1) * l1page_byte_size);
     let mut entries = RawEntries::new(ld_buff, id_rw, val_rw);
-    let (mut l, mut r) = match entries.binary_search(&visitor.center())? {
+    let (mut l, mut r) = match entries.binary_search(visitor.center())? {
       Ok(i) => {
         visitor.visit_center(entries.get_entry(i)?);
         if visitor.visit_desc() {
@@ -1192,9 +1189,9 @@ impl SubTreeR for LDNode {
     // Split the 3 blocs [ld][l1, l1, ..., l1][ST, ST, ..., ST]
     let l1page_byte_size = self.n_l1page_elems * entry_byte_size;
     let subtree_group_byte_size = (self.n_l1page_elems + 1) * self.sub_tree.byte_size(entry_byte_size);
-    let (ld_buff, st_buff) = raw_entries.split_at(self.n_elems * entry_byte_size);
+    let (_ld_buff, st_buff) = raw_entries.split_at(self.n_elems * entry_byte_size);
     let (l1_buff, st_buff) = st_buff.split_at((self.n_elems + 1) * l1page_byte_size);
-    let mut entries = RawEntries::new(ld_buff, id_rw, val_rw);
+    // let mut entries = RawEntries::new(ld_buff, id_rw, val_rw);
 
     visitor = visit_asc_l1page(visitor, id_rw, val_rw, &l1_buff[0..l1page_byte_size],
                                 self.sub_tree.as_ref(), &st_buff[0..subtree_group_byte_size])?;
@@ -1228,21 +1225,21 @@ fn write_l1page<I, V, IRW, VRW, S, T>(
         VRW: ReadWrite<Type=V>,
         S: SubTreeW,
         T: Iterator<Item=Entry<I, V>> {
-  assert!(l1_buff.len() > 0);
+  assert!(!l1_buff.is_empty());
   let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
   let subtree_byte_size = sub_tree.byte_size(entry_byte_size);
   let n_l1 = l1_buff.len() / entry_byte_size;
   assert_eq!(l1_buff.len(),  n_l1 * entry_byte_size, "Wrong L1 buff size: {} != {}", l1_buff.len(),  n_l1 * entry_byte_size);
   assert_eq!(subtree_buff.len(), (n_l1 + 1) * subtree_byte_size, "Wrong SubTree buff size: {} != {}", subtree_buff.len(), (n_l1 + 1) * subtree_byte_size);
   for _ in 0..n_l1 {
-    let (mut curr_buff, st_buff) = subtree_buff.split_at_mut(subtree_byte_size);
-    it = sub_tree.write(it, id_rw, val_rw, &mut curr_buff)?;
+    let (curr_buff, st_buff) = subtree_buff.split_at_mut(subtree_byte_size);
+    it = sub_tree.write(it, id_rw, val_rw, curr_buff)?;
     subtree_buff = st_buff;
     it.next().ok_or_else(|| Error::new(ErrorKind::Other, "Iterator depleted!"))?
       .write(&mut l1_buff, id_rw, val_rw)?;
   }
-  it = sub_tree.write(it, id_rw, val_rw, &mut subtree_buff)?;
-  assert_eq!(l1_buff.len(), 0);
+  it = sub_tree.write(it, id_rw, val_rw, subtree_buff)?;
+  assert!(l1_buff.is_empty());
   Ok(it)
 }
 
@@ -1255,7 +1252,7 @@ fn get_l1page<I, V, IRW, VRW, S>(
         IRW: ReadWrite<Type=I>,
         VRW: ReadWrite<Type=V>,
         S: SubTreeR {
-  assert!(l1_buff.len() > 0);
+  assert!(!l1_buff.is_empty());
   let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
   let subtree_byte_size = sub_tree.byte_size(entry_byte_size);
   let n_l1 = l1_buff.len() / entry_byte_size;
@@ -1282,14 +1279,14 @@ fn visit_l1page<I, V, IRW, VRW, S, T>(
         VRW: ReadWrite<Type=V>,
         S: SubTreeR,
         T: Visitor<I=I, V=V> {
-  assert!(l1_buff.len() > 0);
+  assert!(!l1_buff.is_empty());
   let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
   let subtree_byte_size = sub_tree.byte_size(entry_byte_size);
   let n_l1 = l1_buff.len() / entry_byte_size;
   assert_eq!(l1_buff.len(),  n_l1 * entry_byte_size);
   assert_eq!(subtree_buff.len(), (n_l1 + 1) * subtree_byte_size);
   let mut l1_entries = RawEntries::new(l1_buff, id_rw, val_rw);
-  let (mut l, mut r) = match l1_entries.binary_search(&visitor.center())? {
+  let (mut l, mut r) = match l1_entries.binary_search(visitor.center())? {
     Ok(i) => {
       visitor.visit_center(l1_entries.get_entry(i)?);
       if visitor.visit_desc() {
@@ -1342,7 +1339,7 @@ fn visit_desc_l1page<I, V, IRW, VRW, S, T>(
         VRW: ReadWrite<Type=V>,
         S: SubTreeR,
         T: Visitor<I=I, V=V> {
-  assert!(l1_buff.len() > 0);
+  assert!(!l1_buff.is_empty());
   let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
   let subtree_byte_size = sub_tree.byte_size(entry_byte_size);
   let n_l1 = l1_buff.len() / entry_byte_size;
@@ -1352,14 +1349,14 @@ fn visit_desc_l1page<I, V, IRW, VRW, S, T>(
   let from = n_l1 * subtree_byte_size;
   let to = from + subtree_byte_size;
   visitor = sub_tree.visit_desc(visitor, &subtree_buff[from..to], id_rw, val_rw)?;
-  let mut i = n_l1 - 1;
-  while i >= 0 && visitor.visit_desc() {
+  let mut i = 0;
+  while i < n_l1 && visitor.visit_desc() {
     visitor.visit_le_center(l1_entries.get_entry(i)?);
     if !visitor.visit_desc() { break; }
     let from = i * subtree_byte_size;
     let to = from + subtree_byte_size;
     visitor = sub_tree.visit_desc(visitor, &subtree_buff[from..to], id_rw, val_rw)?;
-    i -= 1;
+    i += 1;
   }
   Ok(visitor)
 }
@@ -1374,7 +1371,7 @@ fn visit_asc_l1page<I, V, IRW, VRW, S, T>(
         VRW: ReadWrite<Type=V>,
         S: SubTreeR,
         T: Visitor<I=I, V=V> {
-  assert!(l1_buff.len() > 0);
+  assert!(!l1_buff.is_empty());
   let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
   let subtree_byte_size = sub_tree.byte_size(entry_byte_size);
   let n_l1 = l1_buff.len() / entry_byte_size;
@@ -1423,9 +1420,9 @@ impl BSTreeMeta {
     self.layout.get_root(&self.constants)
   }
 
-  fn get_data_byte_size(&self) -> usize {
+  /*fn get_data_byte_size(&self) -> usize {
     (self.constants.n_entries * (self.constants.entry_byte_size as u64)) as usize
-  }
+  }*/
   
 }
 
@@ -1580,11 +1577,11 @@ impl BSTreeLayout {
     // nE <= nR + (nR + 1) * nSub
     // => nE - nSub <= nR * (1 + nSub)
     // => nR >= (nE - nSub) / (1 + nSub)
-    let n_root = ((n_entries - n_subtree) / (1 + n_subtree));
+    let n_root = (n_entries - n_subtree) / (1 + n_subtree);
     let n_rem = n_entries - (n_root + (n_root + 1) * n_subtree);
     assert!(n_root as u16 <= cte.n_entries_per_l1page);
     assert!(n_root as u16 <= cte.n_entries_per_l1page);
-    return if n_rem == 0 { // Very unlikely!
+    if n_rem == 0 { // Very unlikely!
       BSTreeLayout {
         depth,
         n_entries_root: n_root as u16,
@@ -1746,7 +1743,7 @@ pub fn build<I, V, IRW, VRW, T>(
   // - data
   let root = meta.get_root();
   root.write(entries_iterator, id_rw, val_rw, &mut mmap[data_starting_byte..file_byte_size])?;
-  mmap.flush();
+  mmap.flush()?;
   file.sync_all()
 }
 
@@ -1761,6 +1758,7 @@ fn write_meta(mut buff: &mut [u8], encoded_meta: Vec<u8>) -> Result<(), Error> {
 }
 
 // Plan a read taking readers!
+/*
 fn read(input_file: PathBuf) -> Result<Root, Error> {
   // Get the size of the file
   let metadata = fs::metadata(&input_file)?;
@@ -1768,11 +1766,11 @@ fn read(input_file: PathBuf) -> Result<Root, Error> {
   // Open the file and read the metadata part
   let file = File::open(&input_file)?;
   let mmap = unsafe { MmapOptions::new().map(&file)? };
-  let (version, data_starting_byte, meta) = read_meta(&mmap)?;
+  let (_version, data_starting_byte, meta) = read_meta(&mmap)?;
   assert_eq!(byte_size - (data_starting_byte as u64), meta.get_data_byte_size() as u64);
   let root = meta.get_root();
   Ok(root)
-}
+}*/
 
 
 
@@ -1787,13 +1785,13 @@ struct GetProcess<'a> {
 impl<'a> Process for GetProcess<'a> {
   type Output = Option<(String, String)>;
 
-  fn exec<I, V, D, IRW, VRW>(self, types: IdVal, id_rw: IRW, val_rw: VRW, dist: D) -> Result<Self::Output, std::io::Error>
+  fn exec<I, V, D, IRW, VRW>(self, _types: IdVal, id_rw: IRW, val_rw: VRW, _dist: D) -> Result<Self::Output, std::io::Error>
     where I: Id,
           V: Val,
           D: Fn(&V, &V) -> V,
           IRW: ReadWrite<Type=I>,
           VRW: ReadWrite<Type=V> {
-    let v = self.value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, ""))?; // V::from_str(&self.value).unwrap();
+    let v = self.value.parse::<V>().map_err(|_e| Error::new(ErrorKind::Other, ""))?; // V::from_str(&self.value).unwrap();
     let root = self.meta.get_root();
     let opt_entry = root.get(v, &self.mmap[self.data_starting_byte..], &id_rw, &val_rw)?;
     Ok(opt_entry.map(|Entry {id, val}| (format!("{:?}", id), format!("{:?}", val))))
@@ -1810,13 +1808,13 @@ struct GetExactProcess<'a> {
 impl<'a> Process for GetExactProcess<'a> {
   type Output = Option<(String, String)>;
 
-  fn exec<I, V, D, IRW, VRW>(self, types: IdVal, id_rw: IRW, val_rw: VRW, dist: D) -> Result<Self::Output, std::io::Error>
+  fn exec<I, V, D, IRW, VRW>(self, _types: IdVal, id_rw: IRW, val_rw: VRW, _dist: D) -> Result<Self::Output, std::io::Error>
     where I: Id,
           V: Val,
           D: Fn(&V, &V) -> V,
           IRW: ReadWrite<Type=I>,
           VRW: ReadWrite<Type=V> {
-    let v = self.value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, ""))?; // V::from_str(&self.value).unwrap();
+    let v = self.value.parse::<V>().map_err(|_e| Error::new(ErrorKind::Other, ""))?; // V::from_str(&self.value).unwrap();
     let visitor = VisitorExact::new(v);
 
     let root = self.meta.get_root();
@@ -1826,6 +1824,7 @@ impl<'a> Process for GetExactProcess<'a> {
 }
 
 
+/*
 // Plan a read taking readers!
 fn get(value: String, input_file: PathBuf) -> Result<(), Error> {
   let now = Instant::now();
@@ -1835,7 +1834,7 @@ fn get(value: String, input_file: PathBuf) -> Result<(), Error> {
   // Open the file and read the metadata part
   let file = File::open(&input_file)?;
   let mmap = unsafe { MmapOptions::new().map(&file)? };
-  let (version, data_starting_byte, meta) = read_meta(&mmap)?;
+  let (_version, data_starting_byte, meta) = read_meta(&mmap)?;
   println!("File read in {:?} ms", now.elapsed().as_millis());
   println!("Struct: {:?}", &meta);
   assert_eq!(byte_size - (data_starting_byte as u64), meta.get_data_byte_size() as u64);
@@ -1865,7 +1864,7 @@ fn get_v2(value: String, input_file: PathBuf) -> Result<(), Error> {
   // Open the file and read the metadata part
   let file = File::open(&input_file)?;
   let mmap = unsafe { MmapOptions::new().map(&file)? };
-  let (version, data_starting_byte, meta) = read_meta(&mmap)?;
+  let (_version, data_starting_byte, meta) = read_meta(&mmap)?;
   println!("File read in {:?} ms", now.elapsed().as_millis());
   println!("Struct: {:?}", &meta);
   assert_eq!(byte_size - (data_starting_byte as u64), meta.get_data_byte_size() as u64);
@@ -1885,14 +1884,14 @@ fn get_v2(value: String, input_file: PathBuf) -> Result<(), Error> {
   }
   Ok(())
 }
-
+*/
 
 /// Returns:
 /// * `[u8; 3]`: the version of the code used to build the tree
 /// * `usize`: the index of the first data byte
 /// * `BSTreeMeta`: the tree structure informations 
 pub fn read_meta(mut buff: &[u8]) -> Result<([u8; 3], usize, BSTreeMeta), Error> {
-  let mut file_type = (*FILE_TYPE).clone();
+  let mut file_type = *FILE_TYPE;
   buff.read_exact(&mut file_type)?;
   assert_eq!((*FILE_TYPE), file_type);
   let mut v_nums: [u8; 3] = Default::default();
@@ -1900,7 +1899,7 @@ pub fn read_meta(mut buff: &[u8]) -> Result<([u8; 3], usize, BSTreeMeta), Error>
   // eprintln!("File content: {} v{}.{}.{}", from_utf8(&file_type).unwrap(), v_nums[0], v_nums[1], v_nums[2]);
   let meta_byte_size = buff.read_u16::<LittleEndian>()? as usize;
   let meta: BSTreeMeta = bincode::deserialize_from(&buff[..meta_byte_size])
-    .map_err(|e| Error::new(ErrorKind::Other, format!("Unable to dezerialize meta")))?;
+    .map_err(|_e| Error::new(ErrorKind::Other, String::from("Unable to dezerialize meta")))?;
   Ok((v_nums, file_type.len() + 3 + 2 + meta_byte_size, meta))
 }
 

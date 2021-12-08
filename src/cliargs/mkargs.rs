@@ -2,11 +2,10 @@
 use structopt::StructOpt;
 use itertools::{Itertools, KMerge};
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::io::{ErrorKind, Error, BufReader, BufWriter};
 use std::fs::{self, File};
 
-use crate::{Id, Val, FromU64, Entry};
+use crate::{Id, Val, Entry};
 use crate::rw::ReadWrite;
 
 #[derive(Debug, StructOpt)]
@@ -30,8 +29,8 @@ pub struct MkAlgoArgs {
 
 impl MkAlgoArgs {
   
-  pub fn get_tmp_dir(&self) -> TmpDir {
-    let mut path = self.temp.clone();
+  pub fn get_tmp_dir(&self) -> Result<TmpDir, Error> {
+    let path = self.temp.clone();
     TmpDir::new(path)
   }
 
@@ -43,7 +42,7 @@ impl MkAlgoArgs {
 
 }
 
-const TMP_FILE_PREFIX: &'static str = ".bstree_chunk"; 
+const TMP_FILE_PREFIX: &str = ".bstree_chunk"; 
 
 pub struct TmpDir {
   path: PathBuf,
@@ -53,13 +52,13 @@ pub struct TmpDir {
 
 impl TmpDir {
   
-  pub fn new(root_dir: PathBuf) -> TmpDir {
-    fs::create_dir_all(&root_dir);
-    TmpDir {
+  pub fn new(root_dir: PathBuf) -> Result<TmpDir, Error> {
+    fs::create_dir_all(&root_dir)?;
+    Ok(TmpDir {
       path: root_dir,
       level: 0,
       n_files: 0,
-    }
+    })
   }
 
   pub fn next_level(&self) -> TmpDir {
@@ -115,7 +114,7 @@ impl TmpDir {
             eprintln!("level: {}; i_chunk: {}", self.level, &i);
             self.to_sorted_entry_iter(id_rw, val_rw, i)
           }).kmerge()
-        );
+        )?;
       }
       // Merge k files till number of temporary files is larger than k
       next_level_dir.reduce_to_k_files(id_rw, val_rw, k)
@@ -189,8 +188,8 @@ impl <'a, I, V, IRW, VRW> IntoIterator for TmpFile<'a, I, V, IRW, VRW>
   type IntoIter = TmpFileIter<'a, I, V, IRW, VRW>;
 
   fn into_iter(self) -> Self::IntoIter {
-    let f = File::open(&self.file).expect(&format!("Unable to open file: {:?}", &self.file));
-    let metadata = f.metadata().expect(&format!("Unable to read file metadata: {:?}", &self.file));
+    let f = File::open(&self.file).unwrap_or_else(|_| panic!("Unable to open file: {:?}", &self.file));
+    let metadata = f.metadata().unwrap_or_else(|_| panic!("Unable to read file metadata: {:?}", &self.file));
     let file_size = metadata.len() as usize;
     let n_entries = file_size / (self.id_rw.n_bytes() + self.val_rw.n_bytes());
     TmpFileIter {

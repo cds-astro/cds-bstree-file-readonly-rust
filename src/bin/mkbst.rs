@@ -3,25 +3,16 @@ extern crate bstree_file;
 use structopt::StructOpt;
 use csv::Reader;
 
-use bstree_file::Process;
-
-use bstree_file::rw::*;
-use bstree_file::cliargs::csvargs::*;
-use bstree_file::cliargs::memsize::*;
-use bstree_file::cliargs::mkargs::*;
-use bstree_file::cliargs::colargs::*;
-use bstree_file::cliargs::coltypeargs::*;
+use bstree_file::cliargs::{
+  csvargs::*,
+  memsize::*,
+  mkargs::*,
+  colargs::*,
+  coltypeargs::*
+};
 use bstree_file::mk::MkIndex;
 
-use std::fs::{self, File, OpenOptions, DirEntry, create_dir_all};
-use std::io::{
-  self,
-  Error, ErrorKind,
-  Read, Write,  BufWriter, BufReader
-};
-use std::path::{Path, PathBuf};
-use std::cmp::Ordering;
-use std::convert::TryFrom;
+use std::io::{Error, ErrorKind, Read};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "mkbst")]
@@ -95,6 +86,5 @@ impl FnUsingReader for SubArgs {
 
 fn main() -> Result<(), Error> {
   let args = Args::from_args();
-  let res = args.exec()?;
-  Ok(())
+  args.exec().map(|_| ())
 }

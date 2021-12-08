@@ -2,16 +2,15 @@
 use structopt::StructOpt;
 use memmap::{Mmap, MmapOptions};
 
-use std::path::PathBuf;
-use std::fs::{self, File};
+use std::path::{Path, PathBuf};
+use std::fs::File;
 use std::iter;
 use std::io::{
-  Error, ErrorKind, Read, Write, BufRead, BufReader
+  Error, ErrorKind, BufRead, BufReader
 };
 
-
 use crate::{
-  Id, Val, IdVal, ValInMemType, Entry, Process,
+  Id, Val, IdVal, Process,
   rw::ReadWrite,
   bstree::{read_meta, BSTreeMeta, SubTreeR},
   visitors::*,
@@ -86,14 +85,14 @@ pub enum ValOrFile {
   List { file: PathBuf},
 }
 
-pub fn get_iter(path: &PathBuf, mode: Mode) -> Result<Box<dyn Iterator<Item=u64> + Send>, Error> {
+pub fn get_iter(path: &Path, mode: Mode) -> Result<Box<dyn Iterator<Item=u64> + Send>, Error> {
   // Get the size of the file
-  let metadata = fs::metadata(&path)?;
-  let byte_size = metadata.len();
+  // let metadata = fs::metadata(&path)?;
+  // let byte_size = metadata.len();
   // Open the file and read the metadata part
   let file = File::open(&path)?;
   let mmap = unsafe { MmapOptions::new().map(&file)? };
-  let (version, data_starting_byte, meta) = read_meta(&mmap)?;
+  let (_version, data_starting_byte, meta) = read_meta(&mmap)?;
   if !meta.types.id_type().is_recno_compatible() {
     return Err(Error::new(ErrorKind::Other, "Index identifier type not compatible with a record number"));
   }
@@ -118,7 +117,7 @@ struct QueryIter {
 impl Process for QueryIter {
   type Output = Box<dyn Iterator<Item=u64> + Send>;
 
-  fn exec<I, V, D, IRW, VRW>(self, types: IdVal, id_rw: IRW, val_rw: VRW, dist: D) -> Result<Self::Output, Error>
+  fn exec<I, V, D, IRW, VRW>(self, _types: IdVal, id_rw: IRW, val_rw: VRW, dist: D) -> Result<Self::Output, Error>
     where I: 'static + Id,
           V: 'static + Val,
           D: 'static + Fn(&V, &V) -> V + Send,
@@ -133,7 +132,7 @@ impl Process for QueryIter {
       Mode::GetFirst { ref val_or_file } => {
         match val_or_file {
           ValOrFile::Value{ value } => {
-            let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type"))?;
+            let v = value.parse::<V>().map_err(|_e| Error::new(ErrorKind::Other, "Wrong value type"))?;
             let visitor = VisitorExact::new(v);
             let visitor = root.visit(visitor, &self.mmap[self.data_starting_byte..], &id_rw, &val_rw)?;
             Ok(Box::new(visitor.entry.into_iter().map(|e| e.id.to_u64())))
@@ -142,7 +141,7 @@ impl Process for QueryIter {
             Ok(Box::new(
               BufReader::new(File::open(file)?).lines()
                 .filter_map(move |line|
-                  line.and_then(|v| v.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type")))
+                  line.and_then(|v| v.parse::<V>().map_err(|_| Error::new(ErrorKind::Other, "Wrong value type")))
                     .and_then(|v| root.visit(VisitorExact::new(v), &self.mmap[self.data_starting_byte..], &id_rw, &val_rw))
                     .ok()
                     .map(|v| v.entry)
@@ -153,7 +152,7 @@ impl Process for QueryIter {
         }
       },
       Mode::All { value, limit, count } => {
-        let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type"))?;
+        let v = value.parse::<V>().map_err(|_| Error::new(ErrorKind::Other, "Wrong value type"))?;
         if count {
           let v = VisitorAllCount::new(v, limit.unwrap_or(std::usize::MAX));
           let v = root.visit(v, &self.mmap[self.data_starting_byte..], &id_rw, &val_rw)?;
@@ -167,11 +166,11 @@ impl Process for QueryIter {
         }
       },
       Mode::Nn { ref val_or_file, ref d_max } => {
-        let d_max = d_max.as_ref().map(|d| d.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong distance type")))
+        let d_max = d_max.as_ref().map(|d| d.parse::<V>().map_err(|_| Error::new(ErrorKind::Other, "Wrong distance type")))
           .transpose()?;
         match val_or_file {
           ValOrFile::Value{ value } => {
-            let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, ""))?;
+            let v = value.parse::<V>().map_err(|_| Error::new(ErrorKind::Other, ""))?;
             let v = VisitorNn::new(
               v, &dist,
               d_max
@@ -183,7 +182,7 @@ impl Process for QueryIter {
             Ok(Box::new(
               BufReader::new(File::open(file)?).lines()
                 .filter_map(move |line|
-                  line.and_then(|v| v.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type")))
+                  line.and_then(|v| v.parse::<V>().map_err(|_| Error::new(ErrorKind::Other, "Wrong value type")))
                     .and_then(|v| root.visit(VisitorNn::new(v, &dist, d_max.clone()),
                        &self.mmap[self.data_starting_byte..], &id_rw, &val_rw))
                     .ok()
@@ -195,18 +194,18 @@ impl Process for QueryIter {
         }
       },
       Mode::Knn { value, k, d_max } => {
-        let v = value.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type"))?;
+        let v = value.parse::<V>().map_err(|_| Error::new(ErrorKind::Other, "Wrong value type"))?;
         let v: VisitorKnn<I, V, V, _> = VisitorKnn::new(
           v, dist, k as usize,
-          d_max.map(|d|  d.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong distance type")))
+          d_max.map(|d|  d.parse::<V>().map_err(|_| Error::new(ErrorKind::Other, "Wrong distance type")))
             .transpose()?
         );
         let v = root.visit(v, &self.mmap[self.data_starting_byte..], &id_rw, &val_rw)?;
         Ok(Box::new(v.knn.into_sorted_vec().into_iter().map(|neig| neig.neighbour.id.to_u64())))
       },
       Mode::Range { lo,  hi, limit, count } => {
-        let lo = lo.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type"))?;
-        let hi = hi.parse::<V>().map_err(|e| Error::new(ErrorKind::Other, "Wrong value type"))?;
+        let lo = lo.parse::<V>().map_err(|_| Error::new(ErrorKind::Other, "Wrong value type"))?;
+        let hi = hi.parse::<V>().map_err(|_| Error::new(ErrorKind::Other, "Wrong value type"))?;
         if count {
           let v = VisitorRangeCount::new(lo, hi, limit.unwrap_or(std::usize::MAX));
           let v = root.visit(v, &self.mmap[self.data_starting_byte..], &id_rw, &val_rw)?;

@@ -6,7 +6,7 @@ use std::io::{ErrorKind, Error, Read};
 use csv::{Reader, StringRecord};
 use itertools::Itertools;
 
-use crate::{Id, Val, FromU64, IdVal, Entry, EntryOpt, Process};
+use crate::{Id, Val, IdVal, Entry, EntryOpt, Process};
 use crate::rw::ReadWrite;
 use crate::cliargs::colargs::ColIndices;
 use crate::cliargs::mkargs::MkAlgoArgs;
@@ -42,8 +42,8 @@ impl <R> MkIndex<R> where R: Read {
           IRW: ReadWrite<Type=I>, // Object able to read/write an identifier
           VRW: ReadWrite<Type=V>, // Object able to read/write a value
             P: Fn(usize, &StringRecord) -> Result<Entry<I, V>, Error> {
-    let to_io_err = |e| From::from(e);
-    let mut tmp_dir = self.args.get_tmp_dir();
+    let to_io_err = From::from;
+    let mut tmp_dir = self.args.get_tmp_dir()?;
     let mut count = 0_usize;
     // Create all tmp files
     for chunk in &self.reader.records().enumerate().chunks(self.args.chunk_size) {
@@ -81,7 +81,7 @@ impl <R: Read> Process for MkIndex<R> {
 
   type Output = usize;
 
-  fn exec<I, V, D, IRW, VRW>(self, types: IdVal, id_rw: IRW, val_rw: VRW, dist: D) -> Result<Self::Output, Error>
+  fn exec<I, V, D, IRW, VRW>(self, types: IdVal, id_rw: IRW, val_rw: VRW, _dist: D) -> Result<Self::Output, Error>
     where I: Id,
           V: Val,
           D: Fn(&V, &V) -> V,
@@ -95,15 +95,15 @@ impl <R: Read> Process for MkIndex<R> {
           Ok(
             EntryOpt {
               id: I::from_u64(i as u64),
-              val: get::<V>(&csv_row, i_val, "value")
+              val: get::<V>(csv_row, i_val, "value")
             }
           )
         ),
         Some(i_id) => self.mk_with_null(&types, &id_rw, &val_rw, |_, csv_row|
           Ok (
             EntryOpt {
-              id: get_with_err::<I>(&csv_row, i_id, "id")?,
-              val: get::<V>(&csv_row, i_val, "value")
+              id: get_with_err::<I>(csv_row, i_id, "id")?,
+              val: get::<V>(csv_row, i_val, "value")
             }
           )
         ),
@@ -114,15 +114,15 @@ impl <R: Read> Process for MkIndex<R> {
           Ok(
             Entry {
               id: I::from_u64(i as u64),
-              val: get_with_err::<V>(&csv_row, i_val, "value")?
+              val: get_with_err::<V>(csv_row, i_val, "value")?
             }
           )
         ),
         Some(i_id) => self.mk_no_null(&types, &id_rw, &val_rw, |_, csv_row|
           Ok (
             Entry {
-              id: get_with_err::<I>(&csv_row, i_id, "id")?,
-              val: get_with_err::<V>(&csv_row, i_val, "value")?
+              id: get_with_err::<I>(csv_row, i_id, "id")?,
+              val: get_with_err::<V>(csv_row, i_val, "value")?
             }
           )
         )
@@ -136,21 +136,21 @@ fn get<F: FromStr>(record: &StringRecord, index: usize, col_name: &'static str) 
   match res {
     Some(str_ref) => {
       if str_ref.is_empty() {
-        eprintln!("WARNING: empty col '{}' at {}!", col_name, get_position_str(&record));
+        eprintln!("WARNING: empty col '{}' at {}!", col_name, get_position_str(record));
         None
       } else {
         match str_ref.parse::<F>() {
           Ok(val) => Some(val),
           Err(_) => {
             eprintln!("WARNING: error parsing col '{}' value '{}' at {}, the value is set to NULL!",
-                      col_name, str_ref, get_position_str(&record));
+                      col_name, str_ref, get_position_str(record));
             None
           }
         }
       }
     },
     None => { // unreachable if mode is not 'flexible'
-      eprintln!("WARNING: no col '{}' at {}, the line is ignored!", col_name, get_position_str(&record));
+      eprintln!("WARNING: no col '{}' at {}, the line is ignored!", col_name, get_position_str(record));
       None
     },
   }
@@ -162,15 +162,15 @@ fn get_with_err<F: FromStr>(record: &StringRecord, index: usize, col_name: &'sta
     Some(str_ref) => {
       if str_ref.is_empty() {
         // Err(From::from(format!("Empty col '{}' at {}!", col_name, get_position_str(&record))))
-        Err(Error::new(ErrorKind::Other, format!("Empty col '{}' at {}!", col_name, get_position_str(&record))))
+        Err(Error::new(ErrorKind::Other, format!("Empty col '{}' at {}!", col_name, get_position_str(record))))
       } else {
         match str_ref.parse::<F>() {
           Ok(val) => Ok(val),
-          Err(_) => Err(Error::new(ErrorKind::Other, format!("Error parsing col '{}' value '{}' at {}!", col_name, str_ref, get_position_str(&record)))),
+          Err(_) => Err(Error::new(ErrorKind::Other, format!("Error parsing col '{}' value '{}' at {}!", col_name, str_ref, get_position_str(record)))),
         }
       }
     }, // unreachable if mode is not 'flexible'
-    None => Err(Error::new(ErrorKind::Other, format!("No col '{}' at {}!", col_name, get_position_str(&record)))),
+    None => Err(Error::new(ErrorKind::Other, format!("No col '{}' at {}!", col_name, get_position_str(record)))),
   }
 }
 

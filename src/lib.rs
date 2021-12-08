@@ -38,7 +38,7 @@ use std::fmt::{Display, Debug};
 use std::str::FromStr;
 use std::marker::PhantomData;
 use std::cmp::Ordering::{self, Greater, Equal, Less};
-use std::io::{Error, ErrorKind, Cursor, Read, Write};
+use std::io::{ErrorKind, Cursor, Read, Write};
 
 pub mod cliargs;
 pub mod float;
@@ -48,7 +48,6 @@ pub mod visitors;
 pub mod bstree;
 
 use rw::*;
-use float::FiniteFloat;
 
 pub trait FromU64: Sized {
   fn from_u64(s: u64) -> Self;
@@ -109,15 +108,14 @@ pub enum IdType {
 impl IdType {
   
   pub fn is_recno_compatible(&self) -> bool {
-    match self {
+    matches!(self, 
       IdType::U24 | 
       IdType::U32 | 
       IdType::U40 | 
       IdType::U48 | 
       IdType::U56 |
-      IdType::U64 => true,
-      _ => false,
-    }
+      IdType::U64 
+    )
   }
   
   pub fn byte_size(&self) -> usize {
@@ -305,7 +303,7 @@ impl IdVal {
 
   pub fn exec<P>(&self, p: P) -> Result<P::Output, std::io::Error> // P::Output
     where P: Process {
-    let ds = |a: &String, b: String| panic!("No string distance!");
+    // let ds = |_a: &String, _b: String| panic!("No string distance!");
     // Here we use static dispatch with monomorphization
     // - pro: one version of the code per possible tuple => very good performances!!
     // - con: one version of the code per possible tuple => slow compilation + compiled code may be large!!
@@ -591,9 +589,9 @@ impl IdVal {
 #[derive(Debug, Clone)]
 pub struct EntryOpt<I: Id, V: Val> {
   /// Row identifier
-  id: I,
+  pub id: I,
   /// Indexed value
-  val: Option<V>,
+  pub val: Option<V>,
 }
 
 #[derive(Debug, Clone)]
@@ -678,13 +676,13 @@ pub struct EntryRaw<'a, I, V>
 impl <'a, I, V> EntryRaw<'a, I, V> 
   where V: PartialOrd {
   
-  fn get_id<IRW, VRW>(&self, id_codec: &IRW, _val_codec: &VRW) -> Result<I, std::io::Error>
+  pub fn get_id<IRW, VRW>(&self, id_codec: &IRW, _val_codec: &VRW) -> Result<I, std::io::Error>
     where IRW: ReadWrite<Type=I>,
           VRW: ReadWrite<Type=V> {
     id_codec.read(&mut Cursor::new(self.raw))
   }
   
-  fn get_val<IRW, VRW>(&self, id_codec: &IRW, val_codec: &VRW) -> Result<V, std::io::Error>
+  pub fn get_val<IRW, VRW>(&self, id_codec: &IRW, val_codec: &VRW) -> Result<V, std::io::Error>
     where IRW: ReadWrite<Type=I>,
           VRW: ReadWrite<Type=V> {
     let mut cursor = Cursor::new(self.raw);
@@ -713,7 +711,7 @@ impl <'a, I, V, IRW, VRW> RawEntries<'a, I, V, IRW, VRW>
   
   pub fn new(raw: &'a [u8], id_rw: &'a IRW, val_rw: &'a VRW) 
     -> RawEntries<'a, I, V, IRW, VRW> {
-    assert!(raw.len() > 0);
+    assert!(!raw.is_empty());
     let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
     let n_entries = raw.len() / entry_byte_size;
     RawEntries {
@@ -726,7 +724,8 @@ impl <'a, I, V, IRW, VRW> RawEntries<'a, I, V, IRW, VRW>
   }
   
   pub fn n_entries(&self) -> usize {
-    self.raw.get_ref().len() / self.entry_byte_size
+    // self.raw.get_ref().len() / self.entry_byte_size
+    self.n_entries
   }
 
   // For better performances, have a look at raw pointers!!

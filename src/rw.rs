@@ -229,7 +229,7 @@ impl ReadWrite for F32RW {
   }
   fn read<R: Read>(&self, reader: &mut R) -> Result<Self::Type, Error> {
     FiniteFloat::<f32>::new(reader.read_f32::<LittleEndian>()?)
-      .ok_or(Error::new(ErrorKind::InvalidData, "Read a not finite f32!"))
+      .ok_or_else(|| Error::new(ErrorKind::InvalidData, "Read a not finite f32!"))
   }
   fn write<W: Write>(&self, writer: &mut W, val: &Self::Type) -> Result<(), Error> {
     writer.write_f32::<LittleEndian>(val.get())
@@ -246,7 +246,7 @@ impl ReadWrite for F64RW {
   }
   fn read<R: Read>(&self, reader: &mut R) -> Result<Self::Type, Error> {
     FiniteFloat::<f64>::new(reader.read_f64::<LittleEndian>()?)
-      .ok_or(Error::new(ErrorKind::InvalidData, "Read a not finite f64!"))
+      .ok_or_else(|| Error::new(ErrorKind::InvalidData, "Read a not finite f64!"))
   }
   fn write<W: Write>(&self, writer: &mut W, val: &Self::Type) -> Result<(), Error> {
     writer.write_f64::<LittleEndian>(val.get())

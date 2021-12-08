@@ -1,11 +1,8 @@
 use rand::prelude::*;
 use structopt::StructOpt;
 
-use std::io::{
-  self,
-  Error, ErrorKind, Read, Write, BufWriter
-};
-use std::fs::{self, File};
+use std::io::{self, Error, Write, BufWriter};
+use std::fs::File;
 use std::path::PathBuf;
 
 #[derive(Debug, StructOpt)]

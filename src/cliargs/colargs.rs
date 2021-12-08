@@ -41,7 +41,7 @@ impl ColArgs {
   fn from_col_indices(&self) -> Result<ColIndices, Error> {
     Ok(
       ColIndices {
-        id: self.id.as_ref().map(|id_col_index| parse_index(id_col_index)).transpose()?,
+        id: self.id.as_ref().map(|s| parse_index(s.as_str())).transpose()?,
         val: parse_index(&self.val)?
       }
     )
@@ -57,7 +57,7 @@ impl ColArgs {
   }
 }
 
-fn parse_index(icol_str: &String) -> Result<usize, Error> {
+fn parse_index(icol_str: &str) -> Result<usize, Error> {
   icol_str.parse::<usize>()
     .map_err(
     |_| Error::new(ErrorKind::Other, format!("Unable to parse '{}' into an integer. Check option -n, --names.", &icol_str)
@@ -65,10 +65,10 @@ fn parse_index(icol_str: &String) -> Result<usize, Error> {
   )
 }
 
-fn index_from_name(col_name: &String, header: &StringRecord) -> Result<usize, Error> {
+fn index_from_name(col_name: &str, header: &StringRecord) -> Result<usize, Error> {
   header.iter().enumerate()
-    .filter(|(_, col)| col == col_name)
+    .filter(|(_, col)| col == &col_name)
     .map(|(i, _)| i)
     .nth(1)
-    .ok_or(Error::new(ErrorKind::Other, format!("Column name '{}' not found in {:?}", col_name, header)))
+    .ok_or_else(|| Error::new(ErrorKind::Other, format!("Column name '{}' not found in {:?}", col_name, header)))
 }
