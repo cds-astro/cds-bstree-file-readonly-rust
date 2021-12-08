@@ -29,7 +29,7 @@ pub enum Mode {
     val_or_file: ValOrFile,
   },
   #[structopt(name = "all")]
-  /// Returns the first entry having a value equal to the given value
+  /// Returns all entries having a value equal to the given value
   All {
     #[structopt(short = "v", long)]
     value: String,

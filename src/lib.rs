@@ -309,148 +309,271 @@ impl IdVal {
     // Here we use static dispatch with monomorphization
     // - pro: one version of the code per possible tuple => very good performances!!
     // - con: one version of the code per possible tuple => slow compilation + compiled code may be large!!
+
+    /*
+    #!/bin/bash
+    id="u24 u32 u40 u48 u56 u64 str"
+    val="u24 u32 u40 u48 u56 u64 i24 i32 i40 i48 i56 i64 f32 f64 str"
+    for i in ${id}; do
+      for v in ${val}; do
+        echo "#[cfg(feature = \"${i}_${v}\")]"
+      done
+    done
+    for i in ${id}; do
+      for v in ${val}; do
+        echo "${i}_${v} = []"
+      done
+    done
+    */
+
     match (&self.0, &self.1) {
       // IdType U24, ValType: All
+      #[cfg(feature = "u24_u24")]
       (IdType::U24, ValType::U24) => p.exec(self.clone(), U24RW, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u24_u32")]
       (IdType::U24, ValType::U32) => p.exec(self.clone(), U24RW, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u24_u40")]
       (IdType::U24, ValType::U40) => p.exec(self.clone(), U24RW, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u24_u48")]
       (IdType::U24, ValType::U48) => p.exec(self.clone(), U24RW, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u24_u56")]
       (IdType::U24, ValType::U56) => p.exec(self.clone(), U24RW, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u24_u64")]
       (IdType::U24, ValType::U64) => p.exec(self.clone(), U24RW, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
 
+      #[cfg(feature = "u24_i24")]
       (IdType::U24, ValType::I24) => p.exec(self.clone(), U24RW, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "u24_i32")]
       (IdType::U24, ValType::I32) => p.exec(self.clone(), U24RW, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "u24_i40")]
       (IdType::U24, ValType::I40) => p.exec(self.clone(), U24RW, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u24_i48")]
       (IdType::U24, ValType::I48) => p.exec(self.clone(), U24RW, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u24_i56")]
       (IdType::U24, ValType::I56) => p.exec(self.clone(), U24RW, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u24_i64")]
       (IdType::U24, ValType::I64) => p.exec(self.clone(), U24RW, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
+      #[cfg(feature = "u24_f32")]
       (IdType::U24, ValType::F32) => p.exec(self.clone(), U24RW, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      #[cfg(feature = "u24_f64")]
       (IdType::U24, ValType::F64) => p.exec(self.clone(), U24RW, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
+      #[cfg(feature = "u24_str")]
       (IdType::U24, ValType::Str{n_chars}) => p.exec(self.clone(), U24RW, StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
 
       // IdType U32, ValType: All
+      #[cfg(feature = "u32_u24")]
       (IdType::U32, ValType::U24) => p.exec(self.clone(), U32RW, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u32_u32")]
       (IdType::U32, ValType::U32) => p.exec(self.clone(), U32RW, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u32_u40")]
       (IdType::U32, ValType::U40) => p.exec(self.clone(), U32RW, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u32_u48")]
       (IdType::U32, ValType::U48) => p.exec(self.clone(), U32RW, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u32_u56")]
       (IdType::U32, ValType::U56) => p.exec(self.clone(), U32RW, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u32_u64")]
       (IdType::U32, ValType::U64) => p.exec(self.clone(), U32RW, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
-      
+
+      #[cfg(feature = "u32_i24")]
       (IdType::U32, ValType::I24) => p.exec(self.clone(), U32RW, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "u32_i32")]
       (IdType::U32, ValType::I32) => p.exec(self.clone(), U32RW, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "u32_i40")]
       (IdType::U32, ValType::I40) => p.exec(self.clone(), U32RW, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u32_i48")]
       (IdType::U32, ValType::I48) => p.exec(self.clone(), U32RW, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u32_i56")]
       (IdType::U32, ValType::I56) => p.exec(self.clone(), U32RW, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u32_i64")]
       (IdType::U32, ValType::I64) => p.exec(self.clone(), U32RW, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
+      #[cfg(feature = "u32_f32")]
       (IdType::U32, ValType::F32) => p.exec(self.clone(), U32RW, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      #[cfg(feature = "u32_f64")]
       (IdType::U32, ValType::F64) => p.exec(self.clone(), U32RW, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
+      #[cfg(feature = "u32_str")]
       (IdType::U32, ValType::Str{n_chars}) => p.exec(self.clone(), U32RW, StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
 
       // IdType U40, ValType: All
+      #[cfg(feature = "u40_u24")]
       (IdType::U40, ValType::U24) => p.exec(self.clone(), U40RW, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u40_u32")]
       (IdType::U40, ValType::U32) => p.exec(self.clone(), U40RW, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u40_u40")]
       (IdType::U40, ValType::U40) => p.exec(self.clone(), U40RW, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u40_u48")]
       (IdType::U40, ValType::U48) => p.exec(self.clone(), U40RW, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u40_u56")]
       (IdType::U40, ValType::U56) => p.exec(self.clone(), U40RW, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u40_u64")]
       (IdType::U40, ValType::U64) => p.exec(self.clone(), U40RW, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
 
+      #[cfg(feature = "u40_i24")]
       (IdType::U40, ValType::I24) => p.exec(self.clone(), U40RW, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "u40_i32")]
       (IdType::U40, ValType::I32) => p.exec(self.clone(), U40RW, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "u40_i40")]
       (IdType::U40, ValType::I40) => p.exec(self.clone(), U40RW, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u40_i48")]
       (IdType::U40, ValType::I48) => p.exec(self.clone(), U40RW, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u40_i56")]
       (IdType::U40, ValType::I56) => p.exec(self.clone(), U40RW, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u40_i64")]
       (IdType::U40, ValType::I64) => p.exec(self.clone(), U40RW, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
+      #[cfg(feature = "u40_f32")]
       (IdType::U40, ValType::F32) => p.exec(self.clone(), U40RW, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      #[cfg(feature = "u40_f64")]
       (IdType::U40, ValType::F64) => p.exec(self.clone(), U40RW, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
+      #[cfg(feature = "u40_str")]
       (IdType::U40, ValType::Str{n_chars}) => p.exec(self.clone(), U40RW, StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
 
       // IdType U48, ValType: All
+      #[cfg(feature = "u48_u24")]
       (IdType::U48, ValType::U24) => p.exec(self.clone(), U48RW, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u48_u32")]
       (IdType::U48, ValType::U32) => p.exec(self.clone(), U48RW, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u48_u40")]
       (IdType::U48, ValType::U40) => p.exec(self.clone(), U48RW, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u48_u48")]
       (IdType::U48, ValType::U48) => p.exec(self.clone(), U48RW, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u48_u56")]
       (IdType::U48, ValType::U56) => p.exec(self.clone(), U48RW, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u48_u64")]
       (IdType::U48, ValType::U64) => p.exec(self.clone(), U48RW, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
 
+      #[cfg(feature = "u48_i24")]
       (IdType::U48, ValType::I24) => p.exec(self.clone(), U48RW, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "u48_i32")]
       (IdType::U48, ValType::I32) => p.exec(self.clone(), U48RW, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "u48_i40")]
       (IdType::U48, ValType::I40) => p.exec(self.clone(), U48RW, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u48_i48")]
       (IdType::U48, ValType::I48) => p.exec(self.clone(), U48RW, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u48_i56")]
       (IdType::U48, ValType::I56) => p.exec(self.clone(), U48RW, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u48_i64")]
       (IdType::U48, ValType::I64) => p.exec(self.clone(), U48RW, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
+      #[cfg(feature = "u48_f32")]
       (IdType::U48, ValType::F32) => p.exec(self.clone(), U48RW, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      #[cfg(feature = "u48_f64")]
       (IdType::U48, ValType::F64) => p.exec(self.clone(), U48RW, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
+      #[cfg(feature = "u48_str")]
       (IdType::U48, ValType::Str{n_chars}) => p.exec(self.clone(), U48RW, StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
-      
+
+
       // IdType U56, ValType: All
+      #[cfg(feature = "u56_u24")]
       (IdType::U56, ValType::U24) => p.exec(self.clone(), U56RW, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u56_u32")]
       (IdType::U56, ValType::U32) => p.exec(self.clone(), U56RW, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u56_u40")]
       (IdType::U56, ValType::U40) => p.exec(self.clone(), U56RW, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u56_u48")]
       (IdType::U56, ValType::U48) => p.exec(self.clone(), U56RW, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u56_u64")]
       (IdType::U56, ValType::U56) => p.exec(self.clone(), U56RW, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u56_u64")]
       (IdType::U56, ValType::U64) => p.exec(self.clone(), U56RW, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
 
+      #[cfg(feature = "u56_i24")]
       (IdType::U56, ValType::I24) => p.exec(self.clone(), U56RW, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "u56_i32")]
       (IdType::U56, ValType::I32) => p.exec(self.clone(), U56RW, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "u56_i40")]
       (IdType::U56, ValType::I40) => p.exec(self.clone(), U56RW, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u56_i48")]
       (IdType::U56, ValType::I48) => p.exec(self.clone(), U56RW, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u56_i56")]
       (IdType::U56, ValType::I56) => p.exec(self.clone(), U56RW, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u56_i64")]
       (IdType::U56, ValType::I64) => p.exec(self.clone(), U56RW, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
+      #[cfg(feature = "u56_f32")]
       (IdType::U56, ValType::F32) => p.exec(self.clone(), U56RW, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      #[cfg(feature = "u56_f64")]
       (IdType::U56, ValType::F64) => p.exec(self.clone(), U56RW, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
+      #[cfg(feature = "u56_str")]
       (IdType::U56, ValType::Str{n_chars}) => p.exec(self.clone(), U56RW, StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
-      
+
       // IdType U64, ValType: All
+      #[cfg(feature = "u64_u24")]
       (IdType::U64, ValType::U24) => p.exec(self.clone(), U64RW, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u64_u32")]
       (IdType::U64, ValType::U32) => p.exec(self.clone(), U64RW, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u64_u40")]
       (IdType::U64, ValType::U40) => p.exec(self.clone(), U64RW, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u64_u48")]
       (IdType::U64, ValType::U48) => p.exec(self.clone(), U64RW, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u64_u56")]
       (IdType::U64, ValType::U56) => p.exec(self.clone(), U64RW, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "u64_u64")]
       (IdType::U64, ValType::U64) => p.exec(self.clone(), U64RW, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
 
+      #[cfg(feature = "u64_i24")]
       (IdType::U64, ValType::I24) => p.exec(self.clone(), U64RW, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "u64_i32")]
       (IdType::U64, ValType::I32) => p.exec(self.clone(), U64RW, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "u64_i40")]
       (IdType::U64, ValType::I40) => p.exec(self.clone(), U64RW, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u64_i48")]
       (IdType::U64, ValType::I48) => p.exec(self.clone(), U64RW, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u64_i56")]
       (IdType::U64, ValType::I56) => p.exec(self.clone(), U64RW, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "u64_i64")]
       (IdType::U64, ValType::I64) => p.exec(self.clone(), U64RW, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
+      #[cfg(feature = "u64_f32")]
       (IdType::U64, ValType::F32) => p.exec(self.clone(), U64RW, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      #[cfg(feature = "u64_f64")]
       (IdType::U64, ValType::F64) => p.exec(self.clone(), U64RW, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
+      #[cfg(feature = "u64_str")]
       (IdType::U64, ValType::Str{n_chars}) => p.exec(self.clone(), U64RW, StrRW{n_bytes: *n_chars}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
-      
+
       // IdType Str, ValType: All
+      #[cfg(feature = "str_u24")]
       (IdType::Str{n_chars}, ValType::U24) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, U24RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "str_u32")]
       (IdType::Str{n_chars}, ValType::U32) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, U32RW, |a: &u32, b: &u32| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "str_u40")]
       (IdType::Str{n_chars}, ValType::U40) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, U40RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "str_u48")]
       (IdType::Str{n_chars}, ValType::U48) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, U48RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "str_u56")]
       (IdType::Str{n_chars}, ValType::U56) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, U56RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
+      #[cfg(feature = "str_u64")]
       (IdType::Str{n_chars}, ValType::U64) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, U64RW, |a: &u64, b: &u64| if  *a > *b { *a - *b } else { *b - *a }),
 
+      #[cfg(feature = "str_i24")]
       (IdType::Str{n_chars}, ValType::I24) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, I24RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "str_i32")]
       (IdType::Str{n_chars}, ValType::I32) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, I32RW, |a: &i32, b: &i32| (a - b).abs()),
+      #[cfg(feature = "str_i40")]
       (IdType::Str{n_chars}, ValType::I40) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, I40RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "str_i48")]
       (IdType::Str{n_chars}, ValType::I48) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, I48RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "str_i56")]
       (IdType::Str{n_chars}, ValType::I56) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, I56RW, |a: &i64, b: &i64| (a - b).abs()),
+      #[cfg(feature = "str_i64")]
       (IdType::Str{n_chars}, ValType::I64) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, I64RW, |a: &i64, b: &i64| (a - b).abs()),
 
+      #[cfg(feature = "str_f32")]
       (IdType::Str{n_chars}, ValType::F32) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, F32RW, |a: &FiniteFloat<f32>, b: &FiniteFloat<f32>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
+      #[cfg(feature = "str_f64")]
       (IdType::Str{n_chars}, ValType::F64) => p.exec(self.clone(), StrRW{n_bytes: *n_chars}, F64RW, |a: &FiniteFloat<f64>, b: &FiniteFloat<f64>| FiniteFloat::new((a.get() - b.get()).abs()).unwrap()),
 
+      #[cfg(feature = "str_str")]
       (IdType::Str{n_chars: n_chars_i}, ValType::Str{n_chars: n_chars_v}) => p.exec(self.clone(), StrRW{n_bytes: *n_chars_i}, StrRW{n_bytes: *n_chars_v}, |a: &String, b: &String| panic!("Distance not implemented for Strings")),
 
-      _ => Err(std::io::Error::new(ErrorKind::Other, "Case not supported yet!")),
+      _ => Err(std::io::Error::new(ErrorKind::Other, "Case not supported! See crate features!!")),
     }
   }
   
