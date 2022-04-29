@@ -8,6 +8,7 @@ use bstree_file::{
 };
 
 use structopt::StructOpt;
+#[cfg(not(target_arch = "wasm32" ))]
 use memmap::{Mmap, MmapOptions};
 
 use std::io::{
@@ -37,6 +38,7 @@ impl Args {
     }
   }
 
+  #[cfg(not(target_arch = "wasm32" ))]
   fn exec(self) -> Result<(), std::io::Error> {
     // Get the size of the file
     //let metadata = fs::metadata(&self.input)?;
@@ -57,6 +59,7 @@ impl Args {
   }
 }
 
+#[cfg(not(target_arch = "wasm32" ))]
 struct Query<'a> {
   mode: Mode,
   meta: &'a BSTreeMeta,
@@ -64,6 +67,7 @@ struct Query<'a> {
   data_starting_byte: usize,
 }
 
+#[cfg(not(target_arch = "wasm32" ))]
 impl<'a> Process for Query<'a> {
   type Output = ();
 
@@ -206,6 +210,7 @@ fn main() -> Result<(), Error> {
   // Parse command line arguments
   let args = Args::from_args();
   args.check();
+  #[cfg(not(target_arch = "wasm32" ))]
   args.exec()?;
   Ok(())
 }

@@ -1,5 +1,6 @@
 
 use structopt::StructOpt;
+#[cfg(not(target_arch = "wasm32" ))]
 use memmap::{Mmap, MmapOptions};
 
 use std::path::{Path, PathBuf};
@@ -85,6 +86,7 @@ pub enum ValOrFile {
   List { file: PathBuf},
 }
 
+#[cfg(not(target_arch = "wasm32" ))]
 pub fn get_iter(path: &Path, mode: Mode) -> Result<Box<dyn Iterator<Item=u64> + Send>, Error> {
   // Get the size of the file
   // let metadata = fs::metadata(&path)?;
@@ -107,6 +109,7 @@ pub fn get_iter(path: &Path, mode: Mode) -> Result<Box<dyn Iterator<Item=u64> + 
   )
 }
 
+#[cfg(not(target_arch = "wasm32" ))]
 struct QueryIter {
   mode: Mode,
   meta: BSTreeMeta,
@@ -114,6 +117,7 @@ struct QueryIter {
   data_starting_byte: usize,
 }
 
+#[cfg(not(target_arch = "wasm32" ))]
 impl Process for QueryIter {
   type Output = Box<dyn Iterator<Item=u64> + Send>;
 

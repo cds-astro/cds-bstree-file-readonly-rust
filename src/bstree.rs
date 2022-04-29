@@ -1,5 +1,6 @@
 //! See the tree terminology here: https://en.wikipedia.org/wiki/Tree_(data_structure)
 use serde::{self, Serialize, Deserialize};
+#[cfg(not(target_arch = "wasm32" ))]
 use memmap::{Mmap, MmapMut};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -1703,6 +1704,7 @@ impl BSTreeLayout {
 /// 
 /// # Panic
 /// * Panics if the entries in the input iterator are not ordered with respect to their values
+#[cfg(not(target_arch = "wasm32" ))]
 pub fn build<I, V, IRW, VRW, T>(
   output_file: PathBuf,
   mem_args: &MemSizeArgs,
@@ -1774,7 +1776,7 @@ fn read(input_file: PathBuf) -> Result<Root, Error> {
 
 
 
-
+#[cfg(not(target_arch = "wasm32" ))]
 struct GetProcess<'a> {
   value: String,
   meta: &'a BSTreeMeta,
@@ -1782,6 +1784,7 @@ struct GetProcess<'a> {
   data_starting_byte: usize,
 }
 
+#[cfg(not(target_arch = "wasm32" ))]
 impl<'a> Process for GetProcess<'a> {
   type Output = Option<(String, String)>;
 
@@ -1798,6 +1801,7 @@ impl<'a> Process for GetProcess<'a> {
   }
 }
 
+#[cfg(not(target_arch = "wasm32" ))]
 struct GetExactProcess<'a> {
   value: String,
   meta: &'a BSTreeMeta,
@@ -1805,6 +1809,7 @@ struct GetExactProcess<'a> {
   data_starting_byte: usize,
 }
 
+#[cfg(not(target_arch = "wasm32" ))]
 impl<'a> Process for GetExactProcess<'a> {
   type Output = Option<(String, String)>;
 

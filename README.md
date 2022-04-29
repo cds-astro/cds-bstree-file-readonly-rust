@@ -72,7 +72,7 @@ Other tools
 -----------
 
 For a larger project that may fullfill the need (an more), see:
-* [seld](https://github.com/spacejam/sled) and this [paper](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/bw-tree-icde2013-final.pdf)
+* [sled](https://github.com/spacejam/sled) and this [paper](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/bw-tree-icde2013-final.pdf)
 
 
 Install
@@ -82,6 +82,9 @@ The standard way to install the `mkbst`, `qbst` and `genfile` binaries is:
 * install rust [see here](https://www.rust-lang.org/tools/install), possibly removing `--tlsv1.2` in the command line
 * fork and dowbload this repository
 * type `cargo install --path .` from the downloaded directory (can take ~10min!)
+* WARNING: by default only a subset of (key, value) pair is available. For all posilibities, use
+  `cargo install --path . --features "all"` See [Cargo.toml](Cargo.toml) for the list of features.
+
 
 Example
 -------

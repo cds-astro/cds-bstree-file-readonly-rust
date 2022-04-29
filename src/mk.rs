@@ -61,6 +61,7 @@ impl <R> MkIndex<R> where R: Read {
     eprintln!(" done");
     // Read all tmp files to generate the final sorted file
     let sorted_entry_iter = tmp_dir.to_sorted_iter(id_rw, val_rw);
+    #[cfg(not(target_arch = "wasm32" ))]
     bstree::build(self.args.get_output(), &self.mem_args, count, sorted_entry_iter, types, id_rw, val_rw)?;
     Ok(count)
   }
