@@ -191,10 +191,10 @@ pub struct VisitorAll<I: Id, V: Val> {
 }
 
 impl<I: Id, V: Val> VisitorAll<I, V> {
-  pub fn new(center: V, _limit: usize) -> VisitorAll<I, V> {
+  pub fn new(center: V, limit: usize) -> VisitorAll<I, V> {
     Self {
       center,
-      limit: 0,
+      limit,
       entries: Default::default(),
       desc: true,
       asc: true,
