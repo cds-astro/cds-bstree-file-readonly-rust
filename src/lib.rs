@@ -47,6 +47,7 @@ pub mod mk;
 pub mod visitors;
 pub mod bstree;
 
+use float::FiniteFloat;
 use rw::*;
 
 pub trait FromU64: Sized {

@@ -20,11 +20,11 @@ the number of elements in the tree, the size of both the L1 and the disk caches.
 
 The simple design inputs are:
 * a metadata part followed by the data part
-* data part as conpact as possible, but without compression
+* data part as compact as possible, but without compression
 * => hence the choice of an implicit structure with an unbalanced rightmost part of the tree
 
 Remark: I do not claim this is the best possible structure, 
-it is a quite naive implementation by a non-expert, any feedback welcome.
+it is a quite **naive implementation by a non-expert**, any feedback welcome.
 
 Purpose
 -------
@@ -523,7 +523,7 @@ sys	0m50,723s
 ```
 
 Remarks:
-* I tested PSQL out of the box, without modiying any parameters
+* I tested PSQL out of the box, without modifying any parameters
 * In the PSQL test, using a PRIMARY KEY for both tables, the result is to be compared with the sorted input in the  BSTree test.
 
 TODO list
@@ -531,12 +531,12 @@ TODO list
 
 * [X] add the possibility to query by a list of target
 * [X] make a simple test with PSQL
-* [ ] replace memmory map by pread/pwrite? (see e.g. [positioned-io](https://github.com/vasi/positioned-io) or [scroll](https://github.com/m4b/scroll))
+* [ ] replace memory map by pread/pwrite? (see e.g. [positioned-io](https://github.com/vasi/positioned-io) or [scroll](https://github.com/m4b/scroll))
 * [ ] remove the code which is now obsolete (e.g. `get` overwritten by `get exact visitor`)
 * [ ] add much more tests
 * [ ] add benchmarks
-* [ ] try to reduce the code redundance (particularly in `SubTreeW` and `SubTreeR`)
-* [ ] add support for NULL values (storing them separatly, out of the tree structure)
+* [ ] try to reduce the code redundancy (particularly in `SubTreeW` and `SubTreeR`)
+* [ ] add support for NULL values (storing them separately, out of the tree structure)
 * [ ] perform tests with [SQLx](https://github.com/launchbadge/sqlx) and PostgreSQL
       to have a reference time (would be nice if we are at least as fast)
 
@@ -546,7 +546,7 @@ Acknowledgements
 If you use this code and work in a scientific public domain
 (especially astronomy), please acknowledge its usage and the 
 [CDS](https://en.wikipedia.org/wiki/Centre_de_donn%C3%A9es_astronomiques_de_Strasbourg)
-who developped it. 
+who developed it. 
 It may help us in promoting our work to our financiers.
 
 Warning
