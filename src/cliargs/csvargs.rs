@@ -1,10 +1,10 @@
 //! Generic arguments used to read CSV data from a file or from stdin.
 
-use structopt::StructOpt;
 use csv::{Reader, ReaderBuilder};
-use std::path::PathBuf;
 use std::fs::File;
-use std::io::{stdin, Read, Error};
+use std::io::{stdin, Error, Read};
+use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub struct CsvArgs {
@@ -35,7 +35,6 @@ pub struct CsvArgs {
 }
 
 impl CsvArgs {
-
   fn create_reader_builder(&self) -> ReaderBuilder {
     let mut reader_builder = csv::ReaderBuilder::new();
     reader_builder.delimiter(self.delimiter as u8);
@@ -51,14 +50,15 @@ impl CsvArgs {
     }
     reader_builder
   }
-  
-  
+
   /// Configure the reader, get it, and call the given function providing the created reader.
   /// ## Note
   /// * we use this strategy to use monomorphization instead of returning a trait object of type
   ///   `Reader<Box<dyn Read>>`
   pub fn call_once<F>(self, func: F) -> Result<F::Output, Error>
-    where F: FnUsingReader {
+  where
+    F: FnUsingReader,
+  {
     // Configure the reader (before creating it)
     let reader_builder = self.create_reader_builder();
     // Create a reader from file or stdin
@@ -66,14 +66,13 @@ impl CsvArgs {
       Some(ref path_buf) => {
         let reader = reader_builder.from_reader(File::open(path_buf)?);
         func.call(reader)
-      },
+      }
       None => {
         let reader = reader_builder.from_reader(stdin());
         func.call(reader)
-      },
+      }
     }
   }
-
 }
 
 /// Defines a function which depends on a specific `Read` instance.

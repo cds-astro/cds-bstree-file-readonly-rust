@@ -1,16 +1,12 @@
 extern crate bstree_file;
 
-use structopt::StructOpt;
 use csv::Reader;
+use structopt::StructOpt;
 
-use bstree_file::cliargs::{
-  csvargs::*,
-  memsize::*,
-  mkargs::*,
-  colargs::*,
-  coltypeargs::*
+use bstree_file::{
+  cliargs::{colargs::*, coltypeargs::*, csvargs::*, memsize::*, mkargs::*},
+  mk::MkIndex,
 };
-use bstree_file::mk::MkIndex;
 
 use std::io::{Error, ErrorKind, Read};
 
@@ -52,16 +48,19 @@ struct SubArgs {
 impl SubArgs {
   fn check(&self) -> Result<(), Error> {
     if !self.col_args.has_id() && !self.coltype_args.is_recno_compatible() {
-      return Err(Error::new(ErrorKind::Other, "Id is a recno. Compatible types are: U24, U32, U40, U48, U56 or U62!")); // String::from(
+      return Err(Error::new(
+        ErrorKind::Other,
+        "Id is a recno. Compatible types are: U24, U32, U40, U48, U56 or U62!",
+      )); // String::from(
     }
     Ok(())
   }
 }
 
 impl FnUsingReader for SubArgs {
-  type Output = usize; 
+  type Output = usize;
   // type Output = <MkIndex<Read> as Process>::Output;
-  
+
   fn call<R: Read>(self, mut reader: Reader<R>) -> Result<Self::Output, Error> {
     // Read header if required
     let header = if reader.has_headers() {
@@ -74,9 +73,9 @@ impl FnUsingReader for SubArgs {
     // According to column indices and supports for null value, use different parsing functions.
     // This also depends on IdType and ValType!
     let process = MkIndex::<R>::new(
-      reader, 
-      col_indices, 
-      self.coltype_args.supports_null(), 
+      reader,
+      col_indices,
+      self.coltype_args.supports_null(),
       self.mkalgo_args,
       self.mem_args,
     );

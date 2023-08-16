@@ -1,12 +1,11 @@
 //! Visitors are the structures allowing ot perform queries on the binary-search tree.
 use std::cmp::{Ord, Ordering};
-use std::marker::PhantomData;
 use std::collections::BinaryHeap;
+use std::marker::PhantomData;
 
-use crate::{Id, Val, Entry};
+use crate::{Entry, Id, Val};
 
 pub trait Visitor {
-
   type I: Id;
   type V: Val;
 
@@ -26,51 +25,55 @@ pub trait Visitor {
 
   /// Continue visiting the right (ascending) side of the tree (with respect to `center`)?
   fn visit_asc(&self) -> bool;
-
 }
-
 
 /// Defines a neighbour
 pub struct Neigbhour<I, V, U>
-  where I: Id,
-        V: Val,
-        U: Ord {
+where
+  I: Id,
+  V: Val,
+  U: Ord,
+{
   pub distance: U,
   pub neighbour: Entry<I, V>,
 }
 
 impl<I, V, U> PartialOrd for Neigbhour<I, V, U>
-  where I: Id,
-        V: Val,
-        U: Ord {
-
+where
+  I: Id,
+  V: Val,
+  U: Ord,
+{
   fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-   self.distance.partial_cmp(&other.distance) 
+    self.distance.partial_cmp(&other.distance)
   }
 }
 
 impl<I, V, U> PartialEq for Neigbhour<I, V, U>
-  where I: Id,
-        V: Val,
-        U: Ord {
-
+where
+  I: Id,
+  V: Val,
+  U: Ord,
+{
   fn eq(&self, other: &Self) -> bool {
     self.distance == other.distance
   }
 }
 
 impl<I, V, U> Eq for Neigbhour<I, V, U>
-  where I: Id,
-        V: Val,
-        U: Ord { 
-  
+where
+  I: Id,
+  V: Val,
+  U: Ord,
+{
 }
 
 impl<I, V, U> Ord for Neigbhour<I, V, U>
-  where I: Id, 
-        V: Val, 
-        U: Ord {
-
+where
+  I: Id,
+  V: Val,
+  U: Ord,
+{
   fn cmp(&self, other: &Self) -> Ordering {
     self.distance.cmp(&other.distance)
   }
@@ -79,7 +82,7 @@ impl<I, V, U> Ord for Neigbhour<I, V, U>
 /// Look for an exact value
 pub struct VisitorExact<I: Id, V: Val> {
   center: V,
-  pub entry: Option<Entry<I, V>>
+  pub entry: Option<Entry<I, V>>,
 }
 
 impl<I: Id, V: Val> VisitorExact<I, V> {
@@ -180,7 +183,6 @@ impl<I: Id, V: Val> Visitor for VisitorAllCount<I, V> {
   }
 }
 
-
 /// Look for all values
 pub struct VisitorAll<I: Id, V: Val> {
   center: V,
@@ -256,14 +258,14 @@ impl<I: Id, V: Val> Visitor for VisitorAll<I, V> {
   }
 }*/
 
-
-
 /// Look for the nearest neighbour
 pub struct VisitorNn<'a, I, V, U, D>
-  where I: Id,
-        V: Val,
-        U: Ord,
-        D: Fn(&V, &V) -> U {
+where
+  I: Id,
+  V: Val,
+  U: Ord,
+  D: Fn(&V, &V) -> U,
+{
   center: V,
   dist: &'a D,
   d_max: Option<U>,
@@ -273,10 +275,12 @@ pub struct VisitorNn<'a, I, V, U, D>
 }
 
 impl<'a, I, V, U, D> VisitorNn<'a, I, V, U, D>
-  where I: Id,
-        V: Val,
-        U: Ord,
-        D: Fn(&V, &V) -> U {
+where
+  I: Id,
+  V: Val,
+  U: Ord,
+  D: Fn(&V, &V) -> U,
+{
   pub fn new(center: V, distance: &'a D, d_max: Option<U>) -> VisitorNn<I, V, U, D> {
     Self {
       center,
@@ -290,11 +294,12 @@ impl<'a, I, V, U, D> VisitorNn<'a, I, V, U, D>
 }
 
 impl<'a, I, V, U, D> Visitor for VisitorNn<'a, I, V, U, D>
-  where I: Id,
-        V: Val,
-        U: Ord,
-        D: Fn(&V, &V) -> U {
-  
+where
+  I: Id,
+  V: Val,
+  U: Ord,
+  D: Fn(&V, &V) -> U,
+{
   type I = I;
   type V = V;
 
@@ -305,12 +310,10 @@ impl<'a, I, V, U, D> Visitor for VisitorNn<'a, I, V, U, D>
   fn visit_center(&mut self, entry: Entry<Self::I, Self::V>) {
     debug_assert_eq!(entry.val, self.center);
     let distance = (self.dist)(&self.center, &entry.val);
-    self.nn = Some(
-      Neigbhour {
-        distance,
-        neighbour: entry
-      }
-    );
+    self.nn = Some(Neigbhour {
+      distance,
+      neighbour: entry,
+    });
     self.desc = false;
     self.asc = false;
   }
@@ -326,22 +329,18 @@ impl<'a, I, V, U, D> Visitor for VisitorNn<'a, I, V, U, D>
     match &self.nn {
       Some(neig) => {
         if distance.lt(&neig.distance) {
-          self.nn = Some(
-            Neigbhour {
-              distance,
-              neighbour: entry
-            }
-          );
-        }
-      },
-      None =>  {
-        self.nn = Some(
-          Neigbhour {
+          self.nn = Some(Neigbhour {
             distance,
-            neighbour: entry
-          }
-        );
-      },
+            neighbour: entry,
+          });
+        }
+      }
+      None => {
+        self.nn = Some(Neigbhour {
+          distance,
+          neighbour: entry,
+        });
+      }
     }
     self.desc = false;
   }
@@ -357,22 +356,18 @@ impl<'a, I, V, U, D> Visitor for VisitorNn<'a, I, V, U, D>
     match &self.nn {
       Some(neig) => {
         if distance.lt(&neig.distance) {
-          self.nn = Some(
-            Neigbhour {
-              distance,
-              neighbour: entry
-            }
-          );
-        }
-      },
-      None =>  {
-        self.nn = Some(
-          Neigbhour {
+          self.nn = Some(Neigbhour {
             distance,
-            neighbour: entry
-          }
-        );
-      },
+            neighbour: entry,
+          });
+        }
+      }
+      None => {
+        self.nn = Some(Neigbhour {
+          distance,
+          neighbour: entry,
+        });
+      }
     }
     self.asc = false;
   }
@@ -385,13 +380,14 @@ impl<'a, I, V, U, D> Visitor for VisitorNn<'a, I, V, U, D>
   }
 }
 
-
 /// Look for the K Nearest Neighbours
 pub struct VisitorKnn<I, V, U, D>
-  where I: Id,
-        V: Val,
-        U: Ord,
-        D: Fn(&V, &V) -> U {
+where
+  I: Id,
+  V: Val,
+  U: Ord,
+  D: Fn(&V, &V) -> U,
+{
   center: V,
   dist: D,
   k: usize,
@@ -402,10 +398,12 @@ pub struct VisitorKnn<I, V, U, D>
 }
 
 impl<I, V, U, D> VisitorKnn<I, V, U, D>
-  where I: Id,
-        V: Val,
-        U: Ord,
-        D: Fn(&V, &V) -> U {
+where
+  I: Id,
+  V: Val,
+  U: Ord,
+  D: Fn(&V, &V) -> U,
+{
   pub fn new(center: V, distance: D, k: usize, d_max: Option<U>) -> VisitorKnn<I, V, U, D> {
     Self {
       center,
@@ -420,11 +418,12 @@ impl<I, V, U, D> VisitorKnn<I, V, U, D>
 }
 
 impl<I, V, U, D> Visitor for VisitorKnn<I, V, U, D>
-  where I: Id,
-        V: Val,
-        U: Ord,
-        D: Fn(&V, &V) -> U {
-
+where
+  I: Id,
+  V: Val,
+  U: Ord,
+  D: Fn(&V, &V) -> U,
+{
   type I = I;
   type V = V;
 
@@ -436,12 +435,10 @@ impl<I, V, U, D> Visitor for VisitorKnn<I, V, U, D>
     debug_assert_eq!(entry.val, self.center);
     let distance = (self.dist)(&self.center, &entry.val);
     if self.k > 0 {
-      self.knn.push(
-        Neigbhour {
-          distance,
-          neighbour: entry
-        }
-      );
+      self.knn.push(Neigbhour {
+        distance,
+        neighbour: entry,
+      });
     } else {
       self.desc = false;
       self.asc = false;
@@ -456,13 +453,11 @@ impl<I, V, U, D> Visitor for VisitorKnn<I, V, U, D>
         return;
       }
     }
-    if self.knn.len() < self.k || distance.lt(&self.knn.peek().unwrap().distance)  {
-      self.knn.push(
-        Neigbhour {
-          distance,
-          neighbour: entry
-        }
-      );
+    if self.knn.len() < self.k || distance.lt(&self.knn.peek().unwrap().distance) {
+      self.knn.push(Neigbhour {
+        distance,
+        neighbour: entry,
+      });
       if self.knn.len() > self.k {
         self.knn.pop();
       }
@@ -479,13 +474,11 @@ impl<I, V, U, D> Visitor for VisitorKnn<I, V, U, D>
         return;
       }
     }
-    if self.knn.len() < self.k || distance.lt(&self.knn.peek().unwrap().distance)  {
-      self.knn.push(
-        Neigbhour {
-          distance,
-          neighbour: entry
-        }
-      );
+    if self.knn.len() < self.k || distance.lt(&self.knn.peek().unwrap().distance) {
+      self.knn.push(Neigbhour {
+        distance,
+        neighbour: entry,
+      });
       if self.knn.len() > self.k {
         self.knn.pop();
       }
@@ -504,8 +497,10 @@ impl<I, V, U, D> Visitor for VisitorKnn<I, V, U, D>
 
 /// Count all values in a given range
 pub struct VisitorRangeCount<I, V>
-  where I: Id,
-        V: Val {
+where
+  I: Id,
+  V: Val,
+{
   lo: V,
   hi: V,
   limit: usize,
@@ -516,12 +511,15 @@ pub struct VisitorRangeCount<I, V>
 }
 
 impl<I, V> VisitorRangeCount<I, V>
-  where I: Id,
-        V: Val {
-
+where
+  I: Id,
+  V: Val,
+{
   pub fn new(lo: V, hi: V, limit: usize) -> VisitorRangeCount<I, V> {
     VisitorRangeCount {
-      lo, hi, limit,
+      lo,
+      hi,
+      limit,
       n_entries: 0,
       desc: true, // in case of equality with the lower value...
       asc: true,
@@ -544,7 +542,7 @@ impl<I: Id, V: Val> Visitor for VisitorRangeCount<I, V> {
   }
 
   fn visit_le_center(&mut self, entry: Entry<Self::I, Self::V>) {
-    if entry.val.lt(&self.lo) || self.n_entries >= self.limit{
+    if entry.val.lt(&self.lo) || self.n_entries >= self.limit {
       self.desc = false;
     } else {
       self.n_entries += 1;
@@ -569,8 +567,10 @@ impl<I: Id, V: Val> Visitor for VisitorRangeCount<I, V> {
 
 /// Look for all values in a given range
 pub struct VisitorRange<I, V>
-  where I: Id,
-        V: Val {
+where
+  I: Id,
+  V: Val,
+{
   lo: V,
   hi: V,
   limit: usize,
@@ -581,12 +581,15 @@ pub struct VisitorRange<I, V>
 }
 
 impl<I, V> VisitorRange<I, V>
-  where I: Id,
-        V: Val {
-
+where
+  I: Id,
+  V: Val,
+{
   pub fn new(lo: V, hi: V, limit: usize) -> VisitorRange<I, V> {
     VisitorRange {
-      lo, hi, limit,
+      lo,
+      hi,
+      limit,
       entries: Default::default(),
       desc: true, // in case of equality with the lower value...
       asc: true,
@@ -609,7 +612,7 @@ impl<I: Id, V: Val> Visitor for VisitorRange<I, V> {
   }
 
   fn visit_le_center(&mut self, entry: Entry<Self::I, Self::V>) {
-    if entry.val.lt(&self.lo) || self.entries.len() >= self.limit{
+    if entry.val.lt(&self.lo) || self.entries.len() >= self.limit {
       self.desc = false;
     } else {
       self.entries.push(entry);

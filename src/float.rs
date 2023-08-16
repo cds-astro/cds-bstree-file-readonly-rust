@@ -1,9 +1,9 @@
 //! Implementation of the `Ord` trait on finite `float`.
 
-use num_traits::{Float, ParseFloatError, FloatErrorKind};
-use std::str::FromStr;
+use num_traits::{Float, FloatErrorKind, ParseFloatError};
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Formatter};
+use std::str::FromStr;
 
 /// A finite float cannot contain NaN, +Inf or -Inf values.
 /// We did so in order to be able to implement the `Ord` trait.
@@ -11,7 +11,7 @@ use std::fmt::{self, Display, Formatter};
 #[derive(Debug, Clone, PartialEq)]
 pub struct FiniteFloat<T: Float + Display>(T);
 
-impl<T: Float + Display> FiniteFloat<T>  {
+impl<T: Float + Display> FiniteFloat<T> {
   /// Returns None if the given value is not finite.
   pub fn new(val: T) -> Option<FiniteFloat<T>> {
     if val.is_finite() {
@@ -21,7 +21,7 @@ impl<T: Float + Display> FiniteFloat<T>  {
     }
   }
   /// Returns the value this float contains.
-  /// The return value is finite and can thus be used 
+  /// The return value is finite and can thus be used
   pub fn get(&self) -> T {
     self.0
   }
@@ -32,7 +32,7 @@ impl<T: Float + Display> Eq for FiniteFloat<T> {}
 impl<T: Float + Display> Ord for FiniteFloat<T> {
   fn cmp(&self, other: &FiniteFloat<T>) -> Ordering {
     // We use the default u32 or u64 comparison knowing that we can only compare finite values.
-    self.partial_cmp(other).unwrap()
+    self.0.partial_cmp(&other.0).unwrap()
   }
 }
 
@@ -42,15 +42,16 @@ impl<T: Float + Display> PartialOrd for FiniteFloat<T> {
   }
 }
 
-impl <T: FromStr + Float + Display> FromStr for FiniteFloat<T> {
-  
+impl<T: FromStr + Float + Display> FromStr for FiniteFloat<T> {
   type Err = ParseFloatError; //<T as FromStr>::Err;
-  
+
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    const ERR: ParseFloatError = ParseFloatError { kind: FloatErrorKind::Invalid };
-    FiniteFloat::<T>::new(
-      T::from_str(s).map_err(|_| ERR)?
-    ).ok_or(ERR)
+    const ERR: ParseFloatError = ParseFloatError {
+      kind: FloatErrorKind::Invalid,
+    };
+    T::from_str(s)
+      .map_err(|_| ERR)
+      .and_then(|v| FiniteFloat::<T>::new(v).ok_or(ERR))
   }
 }
 

@@ -1,12 +1,6 @@
-use std::io::{
-  Read, Write, 
-  Error, ErrorKind
-};
-use byteorder::{
-  LittleEndian, 
-  ReadBytesExt, WriteBytesExt
-};
 use crate::float::FiniteFloat;
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use std::io::{Error, ErrorKind, Read, Write};
 
 /// Trait used to read and write element of the associated type `Type`.
 pub trait ReadWrite: Clone + Send {
@@ -15,9 +9,9 @@ pub trait ReadWrite: Clone + Send {
   fn val_type(&self) -> ValType;*/
   /// Number of bytes redden or written
   fn n_bytes(&self) -> usize;
-  /// Read an element of type `Type` from the given `Reader` 
+  /// Read an element of type `Type` from the given `Reader`
   fn read<R: Read>(&self, reader: &mut R) -> Result<Self::Type, Error>;
-  /// Write an element of type `Type` to the given `Writer` 
+  /// Write an element of type `Type` to the given `Writer`
   fn write<W: Write>(&self, writer: &mut W, val: &Self::Type) -> Result<(), Error>;
 }
 
@@ -228,8 +222,10 @@ impl ReadWrite for F32RW {
     4
   }
   fn read<R: Read>(&self, reader: &mut R) -> Result<Self::Type, Error> {
-    FiniteFloat::<f32>::new(reader.read_f32::<LittleEndian>()?)
-      .ok_or_else(|| Error::new(ErrorKind::InvalidData, "Read a not finite f32!"))
+    reader.read_f32::<LittleEndian>().and_then(|v| {
+      FiniteFloat::<f32>::new(v)
+        .ok_or_else(|| Error::new(ErrorKind::InvalidData, "Read a not finite f32!"))
+    })
   }
   fn write<W: Write>(&self, writer: &mut W, val: &Self::Type) -> Result<(), Error> {
     writer.write_f32::<LittleEndian>(val.get())
@@ -245,8 +241,10 @@ impl ReadWrite for F64RW {
     8
   }
   fn read<R: Read>(&self, reader: &mut R) -> Result<Self::Type, Error> {
-    FiniteFloat::<f64>::new(reader.read_f64::<LittleEndian>()?)
-      .ok_or_else(|| Error::new(ErrorKind::InvalidData, "Read a not finite f64!"))
+    reader.read_f64::<LittleEndian>().and_then(|v| {
+      FiniteFloat::<f64>::new(v)
+        .ok_or_else(|| Error::new(ErrorKind::InvalidData, "Read a not finite f64!"))
+    })
   }
   fn write<W: Write>(&self, writer: &mut W, val: &Self::Type) -> Result<(), Error> {
     writer.write_f64::<LittleEndian>(val.get())
@@ -257,7 +255,7 @@ impl ReadWrite for F64RW {
 
 #[derive(Clone)]
 pub struct StrRW {
-  pub n_bytes: usize
+  pub n_bytes: usize,
 }
 
 impl ReadWrite for StrRW {
@@ -267,17 +265,20 @@ impl ReadWrite for StrRW {
   }
   fn read<R: Read>(&self, reader: &mut R) -> Result<Self::Type, Error> {
     let mut buf = vec![0u8; self.n_bytes];
-    reader.read_exact(&mut buf)?;
-    String::from_utf8(buf).map_err(|e| Error::new(ErrorKind::InvalidData, e))
+    reader
+      .read_exact(&mut buf)
+      .and_then(|()| String::from_utf8(buf).map_err(|e| Error::new(ErrorKind::InvalidData, e)))
   }
   fn write<W: Write>(&self, writer: &mut W, val: &Self::Type) -> Result<(), Error> {
     let buf = val.as_bytes();
     let l = buf.len();
     if l >= self.n_bytes {
       writer.write_all(&buf[0..self.n_bytes])
-    }  else {
-      writer.write_all(buf)?; // 0u8 = '\0' = null character
-      writer.write_all(&vec![0u8; self.n_bytes - l]) 
+    } else {
+      // 0u8 = '\0' = null character
+      writer
+        .write_all(buf)
+        .and_then(|()| writer.write_all(&vec![0u8; self.n_bytes - l]))
     }
   }
 }

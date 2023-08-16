@@ -1,7 +1,7 @@
 //! Arguments used to provide the columns datatypes
 use structopt::StructOpt;
 
-use crate::{IdType, ValType, IdVal};
+use crate::{IdType, IdVal, ValType};
 
 #[derive(Debug, StructOpt)]
 pub struct ColTypeArgs {
@@ -17,19 +17,15 @@ pub struct ColTypeArgs {
 }
 
 impl ColTypeArgs {
-  
   pub fn is_recno_compatible(&self) -> bool {
     self.id_type.is_recno_compatible()
   }
-  
+
   pub fn supports_null(&self) -> bool {
     self.null_val
   }
-  
+
   pub fn to_idval(self) -> IdVal {
     IdVal(self.id_type, self.val_type)
   }
-  
 }
-
-

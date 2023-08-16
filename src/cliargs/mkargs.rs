@@ -1,16 +1,16 @@
 //! Other arguments needed when building the bs-tree
-use structopt::StructOpt;
 use itertools::{Itertools, KMerge};
-use std::path::PathBuf;
-use std::io::{ErrorKind, Error, BufReader, BufWriter};
 use std::fs::{self, File};
+use std::io::{BufReader, BufWriter, Error, ErrorKind};
+use std::path::PathBuf;
+use structopt::StructOpt;
 
-use crate::{Id, Val, Entry};
 use crate::rw::ReadWrite;
+use crate::{Entry, Id, Val};
 
 #[derive(Debug, StructOpt)]
 pub struct MkAlgoArgs {
-  # [structopt(short = "k", long, default_value = "50000000")]
+  #[structopt(short = "k", long, default_value = "50000000")]
   /// Number of rows process at the same time: must be as large as possible but must fit in memory.
   ///
   /// Also equals the number of rows in a temporary file.
@@ -19,16 +19,15 @@ pub struct MkAlgoArgs {
   /// 'k' value of the external k-way merge sort, i.e. maximum number of temporary files merge
   /// at the same time.
   pub kway: usize,
-  # [structopt(short = "t", long, parse(from_os_str), default_value = ".bstree_tmp")]
+  #[structopt(short = "t", long, parse(from_os_str), default_value = ".bstree_tmp")]
   /// Temporary directory containing temporary files
   pub temp: PathBuf,
-  # [structopt(parse(from_os_str))]
+  #[structopt(parse(from_os_str))]
   /// Output file basename (without the .bstree.bin extension)
-  output: PathBuf
+  output: PathBuf,
 }
 
 impl MkAlgoArgs {
-  
   pub fn get_tmp_dir(&self) -> Result<TmpDir, Error> {
     let path = self.temp.clone();
     TmpDir::new(path)
@@ -39,10 +38,9 @@ impl MkAlgoArgs {
     o.set_extension("bstree.bin");
     o
   }
-
 }
 
-const TMP_FILE_PREFIX: &str = ".bstree_chunk"; 
+const TMP_FILE_PREFIX: &str = ".bstree_chunk";
 
 pub struct TmpDir {
   path: PathBuf,
@@ -51,7 +49,6 @@ pub struct TmpDir {
 }
 
 impl TmpDir {
-  
   pub fn new(root_dir: PathBuf) -> Result<TmpDir, Error> {
     fs::create_dir_all(&root_dir)?;
     Ok(TmpDir {
@@ -73,21 +70,28 @@ impl TmpDir {
     self.n_files
   }
 
-  // Return the complete path of tmp file of index level `l` and index `i` 
+  // Return the complete path of tmp file of index level `l` and index `i`
   fn get_file_path(&self, index: usize) -> PathBuf {
     let mut file_path = self.path.clone(); // USE JOIN!!
     file_path.push(format!("{}_l{}i{}", TMP_FILE_PREFIX, self.level, index));
     file_path
-  } 
-  
+  }
+
   // By construction, we can't write a file of lower level when we have already performed at least
   // on reduce.
-  pub fn write_tmp_file<I, V, IRW, VRW, T>(&mut self, id_rw: &IRW, val_rw: &VRW, entries: T) -> Result<(), Error>
-    where I: Id,
-          V: Val,
-          IRW: ReadWrite<Type=I>,
-          VRW: ReadWrite<Type=V>,
-          T: IntoIterator<Item=Entry<I, V>> {
+  pub fn write_tmp_file<I, V, IRW, VRW, T>(
+    &mut self,
+    id_rw: &IRW,
+    val_rw: &VRW,
+    entries: T,
+  ) -> Result<(), Error>
+  where
+    I: Id,
+    V: Val,
+    IRW: ReadWrite<Type = I>,
+    VRW: ReadWrite<Type = V>,
+    T: IntoIterator<Item = Entry<I, V>>,
+  {
     let mut buff = BufWriter::new(File::create(self.get_file_path(self.n_files))?);
     for entry in entries.into_iter() {
       entry.write(&mut buff, id_rw, val_rw)?;
@@ -95,25 +99,35 @@ impl TmpDir {
     self.n_files += 1;
     Ok(())
   }
-  
+
   // Recursive function working level by level till the remaining number of temporary file is
   // lower or equald to `k`
-  pub fn reduce_to_k_files<I, V, IRW, VRW>(self, id_rw: &IRW, val_rw: &VRW, k: usize) -> Result<Self, Error>
-    where I: Id,
-          V: Val,
-          IRW: ReadWrite<Type=I>,
-          VRW: ReadWrite<Type=V> {
+  pub fn reduce_to_k_files<I, V, IRW, VRW>(
+    self,
+    id_rw: &IRW,
+    val_rw: &VRW,
+    k: usize,
+  ) -> Result<Self, Error>
+  where
+    I: Id,
+    V: Val,
+    IRW: ReadWrite<Type = I>,
+    VRW: ReadWrite<Type = V>,
+  {
     if self.n_files > k {
       let mut next_level_dir = self.next_level();
       // reduce by k-way merge using itertools
-      for chunk in &(0..self.n_files).into_iter().chunks(k) {
+      for chunk in &(0..self.n_files).chunks(k) {
         // Merge k tmp files into a new file
         next_level_dir.write_tmp_file(
-          id_rw, val_rw,
-          chunk.map(|i| {
-            eprintln!("level: {}; i_chunk: {}", self.level, &i);
-            self.to_sorted_entry_iter(id_rw, val_rw, i)
-          }).kmerge()
+          id_rw,
+          val_rw,
+          chunk
+            .map(|i| {
+              eprintln!("level: {}; i_chunk: {}", self.level, &i);
+              self.to_sorted_entry_iter(id_rw, val_rw, i)
+            })
+            .kmerge(),
         )?;
       }
       // Merge k files till number of temporary files is larger than k
@@ -123,25 +137,41 @@ impl TmpDir {
     }
   }
 
-  pub fn to_sorted_iter<'a, I, V, IRW, VRW>(&mut self, id_rw: &'a IRW, val_rw: &'a VRW) -> KMerge<TmpFileIter<'a, I, V, IRW, VRW>>
-    where I: Id,
-          V: Val,
-          IRW: ReadWrite<Type=I>,
-          VRW: ReadWrite<Type=V> {
-    (0..self.n_files).into_iter().map(|i| self.to_sorted_entry_iter(id_rw, val_rw, i)).kmerge()
+  pub fn to_sorted_iter<'a, I, V, IRW, VRW>(
+    &mut self,
+    id_rw: &'a IRW,
+    val_rw: &'a VRW,
+  ) -> KMerge<TmpFileIter<'a, I, V, IRW, VRW>>
+  where
+    I: Id,
+    V: Val,
+    IRW: ReadWrite<Type = I>,
+    VRW: ReadWrite<Type = V>,
+  {
+    (0..self.n_files)
+      .map(|i| self.to_sorted_entry_iter(id_rw, val_rw, i))
+      .kmerge()
   }
-  
-  fn to_sorted_entry_iter<'a, I, V, IRW, VRW>(&self, id_rw: &'a IRW, val_rw: &'a VRW, i: usize) -> TmpFileIter<'a, I, V, IRW, VRW>
-    where I: Id,
-          V: Val,
-          IRW: ReadWrite<Type=I>,
-          VRW: ReadWrite<Type=V> {
+
+  fn to_sorted_entry_iter<'a, I, V, IRW, VRW>(
+    &self,
+    id_rw: &'a IRW,
+    val_rw: &'a VRW,
+    i: usize,
+  ) -> TmpFileIter<'a, I, V, IRW, VRW>
+  where
+    I: Id,
+    V: Val,
+    IRW: ReadWrite<Type = I>,
+    VRW: ReadWrite<Type = V>,
+  {
     let file_path = self.get_file_path(i);
     TmpFile {
       file: file_path,
       id_rw,
       val_rw,
-    }.into_iter()
+    }
+    .into_iter()
   }
 
   // Remove temporary files (and dir if empty)
@@ -149,9 +179,12 @@ impl TmpDir {
     // Remove all temp files
     for entry in fs::read_dir(&self.path)? {
       let file = entry?;
-      let file_name = file.file_name().into_string().map_err(|_| Error::new(ErrorKind::Other, "Unable to retrieve filename"))?;
+      let file_name = file
+        .file_name()
+        .into_string()
+        .map_err(|_| Error::new(ErrorKind::Other, "Unable to retrieve filename"))?;
       if file_name.starts_with(&format!("{}_l{}", TMP_FILE_PREFIX, self.level)) {
-        fs::remove_file(file.path())?;  
+        fs::remove_file(file.path())?;
       }
     }
     // Remove dir if possible, but with no error if it fails (files of a deeper level must be present)
@@ -162,34 +195,42 @@ impl TmpDir {
 impl Drop for TmpDir {
   fn drop(&mut self) {
     if self.clear().is_err() {
-      eprintln!("Unable to clean the temporary dir '{:?}'. Remove files and dir manually!", &self.path);
+      eprintln!(
+        "Unable to clean the temporary dir '{:?}'. Remove files and dir manually!",
+        &self.path
+      );
     }
   }
 }
 
-
-
-struct TmpFile<'a, I, V, IRW, VRW> 
-  where I: Id,
-        V: Val,
-        IRW: ReadWrite<Type=I>,
-        VRW: ReadWrite<Type=V>  {
+struct TmpFile<'a, I, V, IRW, VRW>
+where
+  I: Id,
+  V: Val,
+  IRW: ReadWrite<Type = I>,
+  VRW: ReadWrite<Type = V>,
+{
   file: PathBuf,
   id_rw: &'a IRW,
   val_rw: &'a VRW,
 }
 
-impl <'a, I, V, IRW, VRW> IntoIterator for TmpFile<'a, I, V, IRW, VRW>
-  where I: Id,
-        V: Val,
-        IRW: ReadWrite<Type=I>,
-        VRW: ReadWrite<Type=V> {
+impl<'a, I, V, IRW, VRW> IntoIterator for TmpFile<'a, I, V, IRW, VRW>
+where
+  I: Id,
+  V: Val,
+  IRW: ReadWrite<Type = I>,
+  VRW: ReadWrite<Type = V>,
+{
   type Item = Entry<I, V>;
   type IntoIter = TmpFileIter<'a, I, V, IRW, VRW>;
 
   fn into_iter(self) -> Self::IntoIter {
-    let f = File::open(&self.file).unwrap_or_else(|_| panic!("Unable to open file: {:?}", &self.file));
-    let metadata = f.metadata().unwrap_or_else(|_| panic!("Unable to read file metadata: {:?}", &self.file));
+    let f =
+      File::open(&self.file).unwrap_or_else(|_| panic!("Unable to open file: {:?}", &self.file));
+    let metadata = f
+      .metadata()
+      .unwrap_or_else(|_| panic!("Unable to read file metadata: {:?}", &self.file));
     let file_size = metadata.len() as usize;
     let n_entries = file_size / (self.id_rw.n_bytes() + self.val_rw.n_bytes());
     TmpFileIter {
@@ -200,14 +241,15 @@ impl <'a, I, V, IRW, VRW> IntoIterator for TmpFile<'a, I, V, IRW, VRW>
       n_read: 0,
     }
   }
-  
 }
 
 pub struct TmpFileIter<'a, I, V, IRW, VRW>
-  where I: Id,
-        V: Val,
-      IRW: ReadWrite<Type=I>,
-      VRW: ReadWrite<Type=V> {
+where
+  I: Id,
+  V: Val,
+  IRW: ReadWrite<Type = I>,
+  VRW: ReadWrite<Type = V>,
+{
   reader: BufReader<File>,
   id_rw: &'a IRW,
   val_rw: &'a VRW,
@@ -215,18 +257,20 @@ pub struct TmpFileIter<'a, I, V, IRW, VRW>
   n_read: usize,
 }
 
-impl <'a, I, V, IRW, VRW> Iterator for TmpFileIter<'a, I, V, IRW, VRW>
-  where I: Id,
-        V: Val,
-      IRW: ReadWrite<Type=I>,
-      VRW: ReadWrite<Type=V>  {
+impl<'a, I, V, IRW, VRW> Iterator for TmpFileIter<'a, I, V, IRW, VRW>
+where
+  I: Id,
+  V: Val,
+  IRW: ReadWrite<Type = I>,
+  VRW: ReadWrite<Type = V>,
+{
   type Item = Entry<I, V>;
-  
+
   fn size_hint(&self) -> (usize, Option<usize>) {
     let n_remaining = self.n_entries - self.n_read;
     (n_remaining, Some(n_remaining))
   }
-  
+
   fn next(&mut self) -> Option<Self::Item> {
     if self.n_read < self.n_entries {
       self.n_read += 1;
@@ -237,7 +281,6 @@ impl <'a, I, V, IRW, VRW> Iterator for TmpFileIter<'a, I, V, IRW, VRW>
       None
     }
   }
-  
 }
 
 /*
@@ -259,5 +302,3 @@ pub fn get_file_path(file_dir: &PathBuf) -> Box<Path> {
 }
 
 */
-
-

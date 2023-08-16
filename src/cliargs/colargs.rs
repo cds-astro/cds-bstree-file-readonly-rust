@@ -1,7 +1,7 @@
 //! Arguments used to find the proper column indices
-use structopt::StructOpt;
 use csv::StringRecord;
 use std::io::{Error, ErrorKind};
+use structopt::StructOpt;
 
 /// Structure storing the indices of:
 /// * the column containing the identifier (if any)
@@ -25,50 +25,67 @@ pub struct ColArgs {
 }
 
 impl ColArgs {
-  
   pub fn has_id(&self) -> bool {
     self.id.is_some()
   }
-  
+
   pub fn get_col_indices(&self, header: &Option<&StringRecord>) -> Result<ColIndices, Error> {
     match (self.names, header) {
       (false, _) => self.from_col_indices(),
       (true, &Some(string_record)) => self.from_col_names(string_record),
-      (true, &None) => Err(Error::new(ErrorKind::Other, "Option -n, --names requires a header!")),
+      (true, &None) => Err(Error::new(
+        ErrorKind::Other,
+        "Option -n, --names requires a header!",
+      )),
     }
   }
 
   fn from_col_indices(&self) -> Result<ColIndices, Error> {
-    Ok(
-      ColIndices {
-        id: self.id.as_ref().map(|s| parse_index(s.as_str())).transpose()?,
-        val: parse_index(&self.val)?
-      }
-    )
+    Ok(ColIndices {
+      id: self
+        .id
+        .as_ref()
+        .map(|s| parse_index(s.as_str()))
+        .transpose()?,
+      val: parse_index(&self.val)?,
+    })
   }
-  
+
   fn from_col_names(&self, header: &StringRecord) -> Result<ColIndices, Error> {
-    Ok(
-      ColIndices {
-        id: self.id.as_ref().map(|id_col_name| index_from_name(id_col_name, header)).transpose()?,
-        val: index_from_name(&self.val, header)?
-      }
-    )
+    Ok(ColIndices {
+      id: self
+        .id
+        .as_ref()
+        .map(|id_col_name| index_from_name(id_col_name, header))
+        .transpose()?,
+      val: index_from_name(&self.val, header)?,
+    })
   }
 }
 
 fn parse_index(icol_str: &str) -> Result<usize, Error> {
-  icol_str.parse::<usize>()
-    .map_err(
-    |_| Error::new(ErrorKind::Other, format!("Unable to parse '{}' into an integer. Check option -n, --names.", &icol_str)
+  icol_str.parse::<usize>().map_err(|_| {
+    Error::new(
+      ErrorKind::Other,
+      format!(
+        "Unable to parse '{}' into an integer. Check option -n, --names.",
+        &icol_str
+      ),
     )
-  )
+  })
 }
 
 fn index_from_name(col_name: &str, header: &StringRecord) -> Result<usize, Error> {
-  header.iter().enumerate()
+  header
+    .iter()
+    .enumerate()
     .filter(|(_, col)| col == &col_name)
     .map(|(i, _)| i)
     .nth(1)
-    .ok_or_else(|| Error::new(ErrorKind::Other, format!("Column name '{}' not found in {:?}", col_name, header)))
+    .ok_or_else(|| {
+      Error::new(
+        ErrorKind::Other,
+        format!("Column name '{}' not found in {:?}", col_name, header),
+      )
+    })
 }
