@@ -267,7 +267,11 @@ impl ReadWrite for StrRW {
     let mut buf = vec![0u8; self.n_bytes];
     reader
       .read_exact(&mut buf)
-      .and_then(|()| String::from_utf8(buf).map_err(|e| Error::new(ErrorKind::InvalidData, e)))
+      .and_then(|()| std::str::from_utf8(&buf)
+        .map_err(|e| Error::new(ErrorKind::InvalidData, e))
+        .map(|s| s.trim_end_matches('\0').into()
+      )
+    )
   }
   fn write<W: Write>(&self, writer: &mut W, val: &Self::Type) -> Result<(), Error> {
     let buf = val.as_bytes();

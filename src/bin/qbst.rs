@@ -9,16 +9,17 @@ use bstree_file::{
 
 #[cfg(not(target_arch = "wasm32"))]
 use memmap::{Mmap, MmapOptions};
-use structopt::StructOpt;
+use structopt::{StructOpt, clap::AppSettings};
 
 use std::{
   fs::File,
   io::{BufRead, BufReader, Error, ErrorKind},
   path::PathBuf,
 };
+use std::io::Cursor;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "qbst")]
+#[structopt(name = "qbst", global_settings = &[AppSettings::ColoredHelp, AppSettings::AllowNegativeNumbers])]
 /// Query a Binary Search Tree stored in a file.
 ///
 ///  Example:
@@ -86,6 +87,29 @@ impl<'a> Process for Query<'a> {
     match self.mode {
       Mode::Info => {
         println!("{}", serde_json::to_string_pretty(&self.meta)?);
+        Ok(())
+      }
+      Mode::Data { limit } => {
+        let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
+        println!("id,val");
+        match limit {
+          Some(limit) => {
+            for kv in self.mmap[self.data_starting_byte..].chunks_exact(entry_byte_size).take(limit) {
+              let mut cursor = Cursor::new(kv);
+              let id = id_rw.read(&mut cursor)?;
+              let val = val_rw.read(&mut cursor)?;
+              println!("{},{}", id, val);
+            }
+          },
+          None => {
+            for kv in self.mmap[self.data_starting_byte..].chunks_exact(entry_byte_size) {
+              let mut cursor = Cursor::new(kv);
+              let id = id_rw.read(&mut cursor)?;
+              let val = val_rw.read(&mut cursor)?;
+              println!("{},{}", id, val);
+            }   
+          }
+        }
         Ok(())
       }
       Mode::GetFirst { val_or_file } => match val_or_file {

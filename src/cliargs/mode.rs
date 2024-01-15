@@ -2,10 +2,12 @@
 use memmap::{Mmap, MmapOptions};
 use structopt::StructOpt;
 
-use std::fs::File;
-use std::io::{BufRead, BufReader, Error, ErrorKind};
-use std::iter;
-use std::path::{Path, PathBuf};
+use std::{
+  fs::File,
+  io::{Cursor, BufRead, BufReader, Error, ErrorKind},
+  iter,
+  path::{Path, PathBuf}
+};
 
 use crate::{
   bstree::{read_meta, BSTreeMeta, SubTreeR},
@@ -19,6 +21,12 @@ pub enum Mode {
   #[structopt(name = "info")]
   /// Returns tree metadata information
   Info,
+  #[structopt(name = "data")]
+  /// Returns the data sequentially
+  Data {
+    /// Limits the number of entries in output
+    limit: Option<usize>,
+  },
   #[structopt(name = "get")]
   /// Returns the first entry having a value equal to the given value
   GetFirst {
@@ -138,7 +146,17 @@ impl Process for QueryIter {
       Mode::Info => {
         println!("{}", serde_json::to_string_pretty(&self.meta)?);
         Ok(Box::new(iter::empty()))
-      }
+      },
+      Mode::Data { limit } => {
+        let limit = limit.unwrap_or(1000);
+        let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
+        let it = self.mmap[self.data_starting_byte..].chunks_exact(entry_byte_size);
+        let res: Vec<u64> =  it.take(limit).filter_map(move |kv| {
+            let mut cursor = Cursor::new(kv);
+            id_rw.read(&mut cursor).map(|id| id.to_u64()).ok()
+          }).collect();
+        Ok(Box::new(res.into_iter()))
+      },
       Mode::GetFirst { ref val_or_file } => match val_or_file {
         ValOrFile::Value { value } => {
           let v = value

@@ -1,7 +1,7 @@
 extern crate bstree_file;
 
 use csv::Reader;
-use structopt::StructOpt;
+use structopt::{StructOpt, clap::AppSettings};
 
 use bstree_file::{
   cliargs::{colargs::*, coltypeargs::*, csvargs::*, memsize::*, mkargs::*},
@@ -11,7 +11,7 @@ use bstree_file::{
 use std::io::{Error, ErrorKind, Read};
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "mkbst")]
+#[structopt(name = "mkbst", global_settings = &[AppSettings::ColoredHelp, AppSettings::AllowNegativeNumbers])]
 /// Binary Search Tree creation in a file.
 ///
 /// Examples:

@@ -282,8 +282,8 @@ pub trait Process {
     I: 'static + Id,
     V: 'static + Val,
     D: 'static + Fn(&V, &V) -> V + Send,
-    IRW: 'static + ReadWrite<Type = I>,
-    VRW: 'static + ReadWrite<Type = V>;
+    IRW: 'static + ReadWrite<Type = I> + std::marker::Sync,
+    VRW: 'static + ReadWrite<Type = V> + std::marker::Sync ;
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1079,7 +1079,6 @@ pub struct EntryOpt<I: Id, V: Val> {
 
 #[derive(Debug, Clone)]
 pub struct Entry<I: Id, V: Val> {
-  // I: Sized, V: Sized + Ord {
   /// Row identifier
   pub id: I,
   /// Indexed value
@@ -1087,26 +1086,6 @@ pub struct Entry<I: Id, V: Val> {
 }
 
 impl<I: Id, V: Val> Entry<I, V> {
-  /*fn n_bytes<IRW, VRW>(&self, id_codec: &IRW, val_codec: &VRW) -> usize
-  where IRW: ReadWrite<Type=I>,
-        VRW: ReadWrite<Type=V> {
-    id_codec.n_bytes() + val_codec.n_bytes()
-  }
-
-  fn read_id<IRW, VRW>(&self, mut reader: &mut [u8], id_codec: &IRW, val_codec: &VRW) -> Result<I, std::io::Error>
-    where IRW: ReadWrite<Type=I>,
-          VRW: ReadWrite<Type=V> {
-    assert_eq!(reader.len(), self.n_bytes(id_codec, val_codec));
-    id_codec.read(&mut reader)
-  }
-
-  fn read_val<IRW, VRW>(&self, reader: &mut [u8], id_codec: &IRW, val_codec: &VRW) -> Result<V, std::io::Error>
-    where IRW: ReadWrite<Type=I>,
-          VRW: ReadWrite<Type=V> {
-    assert_eq!(reader.len(), self.n_bytes(id_codec, val_codec));
-    val_codec.read(&mut reader[id_codec.n_bytes()..])
-  }*/
-
   fn read<R, IRW, VRW>(
     reader: &mut R,
     id_codec: &IRW,
@@ -1117,10 +1096,6 @@ impl<I: Id, V: Val> Entry<I, V> {
     IRW: ReadWrite<Type = I>,
     VRW: ReadWrite<Type = V>,
   {
-    /*Ok(
-      id: id_codec.read(reader)?,
-      val: val_codec.read(reader)?,
-    })*/
     id_codec
       .read(reader)
       .and_then(|id| val_codec.read(reader).map(|val| Entry { id, val }))
