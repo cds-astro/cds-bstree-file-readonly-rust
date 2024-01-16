@@ -1,14 +1,12 @@
-extern crate bstree_file;
+use std::io::{Error, ErrorKind, Read};
 
 use csv::Reader;
-use structopt::{StructOpt, clap::AppSettings};
+use structopt::{clap::AppSettings, StructOpt};
 
-use bstree_file::{
+use bstree_file_readonly::{
   cliargs::{colargs::*, coltypeargs::*, csvargs::*, memsize::*, mkargs::*},
   mk::MkIndex,
 };
-
-use std::io::{Error, ErrorKind, Read};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "mkbst", global_settings = &[AppSettings::ColoredHelp, AppSettings::AllowNegativeNumbers])]

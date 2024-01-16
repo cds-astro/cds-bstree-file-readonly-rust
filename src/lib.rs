@@ -1,11 +1,11 @@
-//! Library implementing a binary search tree stored in a file.
+//! Library implementing a read-only  binary search tree stored in a file.
 //!  
 //! Entries are tuples made of one identifier plus one value.
 //! Searches are performed on the values: they typically are values stored in a table column while
 //! identifiers are rows identifiers (e.g. simple row indices).
 //!
 //! Node size should be such that it fits into L1 data cache.
-//! Typical values (for eache core):
+//! Typical values (for cache core):
 //! * L1 cache: 32 kB
 //! * L2 cache: 256 kB
 //! * L3 cache: 1 MB (6 MB shared between 4 cores)
@@ -18,13 +18,12 @@
 //! If designed for HDD, we want to avoid random access (5ms seek time):
 //! * we thus prefer to load large parts of the file in RAM
 //!     - we favor a single root node (kept in cache), and an array of leaf nodes
-//! * each node stored on the disk must be devided into sub-node no larger than the L1 cache capacity
+//! * each node stored on the disk must be divided into sub-nodes no larger than the L1 cache capacity
 //!
-//! If you are looking for a index that can be modifed (add and remove key/value pair), you should
-//! have a look at [self](https://sled.rs/) and its [git repo](https://github.com/spacejam/sled).
+//! If you are looking for a index that can be modified (add and remove key/value pair), you should
+//! have a look at [sled](https://sled.rs/) and its [git repo](https://github.com/spacejam/sled).
 //! They cite [this paper](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/bw-tree-icde2013-final.pdf)
-//! I should definitly have a look at!!
-
+//! I should definitely have a look at it!!
 // L1Node<E> = simple &[E] of size nL1 such that size_of<E> * nL1 < 90% of L1 cache size
 // (nL1InL3 - 1) * size_of<E> (1 + nL1) < L3 cache size
 // L3Node = &[E] of size (nL1InL3 - 1) + nL1InL3 * L1Node<E>
@@ -34,11 +33,13 @@
 
 use serde::{Deserialize, Serialize};
 
-use std::cmp::Ordering::{self, Equal, Greater, Less};
-use std::fmt::{Debug, Display};
-use std::io::{Cursor, ErrorKind, Read, Write};
-use std::marker::PhantomData;
-use std::str::FromStr;
+use std::{
+  cmp::Ordering::{self, Equal, Greater, Less},
+  fmt::{Debug, Display},
+  io::{Cursor, ErrorKind, Read, Write},
+  marker::PhantomData,
+  str::FromStr,
+};
 
 pub mod bstree;
 pub mod cliargs;
@@ -140,13 +141,6 @@ impl IdType {
     }
   }
 }
-
-/*impl FromU64 for IdType {
-  type Err = String;
-
-  fn from_(id_type: &str) -> Result<Self, Self::Err> {
-
-}*/
 
 impl FromStr for IdType {
   type Err = String;
@@ -282,8 +276,8 @@ pub trait Process {
     I: 'static + Id,
     V: 'static + Val,
     D: 'static + Fn(&V, &V) -> V + Send,
-    IRW: 'static + ReadWrite<Type = I> + std::marker::Sync,
-    VRW: 'static + ReadWrite<Type = V> + std::marker::Sync ;
+    IRW: 'static + ReadWrite<Type = I>,
+    VRW: 'static + ReadWrite<Type = V>;
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -424,7 +418,7 @@ impl IdVal {
         self.clone(),
         U24RW,
         StrRW { n_bytes: *n_chars },
-        |a: &String, b: &String| panic!("Distance not implemented for Strings"),
+        |_a: &String, _b: &String| panic!("Distance not implemented for Strings"),
       ),
 
       // IdType U32, ValType: All
@@ -526,7 +520,7 @@ impl IdVal {
         self.clone(),
         U32RW,
         StrRW { n_bytes: *n_chars },
-        |a: &String, b: &String| panic!("Distance not implemented for Strings"),
+        |_a: &String, _b: &String| panic!("Distance not implemented for Strings"),
       ),
 
       // IdType U40, ValType: All
@@ -628,7 +622,7 @@ impl IdVal {
         self.clone(),
         U40RW,
         StrRW { n_bytes: *n_chars },
-        |a: &String, b: &String| panic!("Distance not implemented for Strings"),
+        |_a: &String, _b: &String| panic!("Distance not implemented for Strings"),
       ),
 
       // IdType U48, ValType: All
@@ -730,7 +724,7 @@ impl IdVal {
         self.clone(),
         U48RW,
         StrRW { n_bytes: *n_chars },
-        |a: &String, b: &String| panic!("Distance not implemented for Strings"),
+        |_a: &String, _b: &String| panic!("Distance not implemented for Strings"),
       ),
 
       // IdType U56, ValType: All
@@ -832,7 +826,7 @@ impl IdVal {
         self.clone(),
         U56RW,
         StrRW { n_bytes: *n_chars },
-        |a: &String, b: &String| panic!("Distance not implemented for Strings"),
+        |_a: &String, _b: &String| panic!("Distance not implemented for Strings"),
       ),
 
       // IdType U64, ValType: All
@@ -934,7 +928,7 @@ impl IdVal {
         self.clone(),
         U64RW,
         StrRW { n_bytes: *n_chars },
-        |a: &String, b: &String| panic!("Distance not implemented for Strings"),
+        |_a: &String, _b: &String| panic!("Distance not implemented for Strings"),
       ),
 
       // IdType Str, ValType: All
@@ -1052,7 +1046,7 @@ impl IdVal {
         StrRW {
           n_bytes: *n_chars_v,
         },
-        |a: &String, b: &String| panic!("Distance not implemented for Strings"),
+        |_a: &String, _b: &String| panic!("Distance not implemented for Strings"),
       ),
 
       _ => Err(std::io::Error::new(
@@ -1061,12 +1055,6 @@ impl IdVal {
       )),
     }
   }
-
-  /*pub fn test(&self) {
-    let mut buf = vec![0u8; 10];
-
-    // self.exec(|id_rw, val_rw| (id_rw.read(&buf), val_rw.read(&buf)))
-  }*/
 }
 
 #[derive(Debug, Clone)]

@@ -1,9 +1,11 @@
 //! Implementation of the `Ord` trait on finite `float`.
 
 use num_traits::{Float, FloatErrorKind, ParseFloatError};
-use std::cmp::Ordering;
-use std::fmt::{self, Display, Formatter};
-use std::str::FromStr;
+use std::{
+  cmp::Ordering,
+  fmt::{self, Display, Formatter},
+  str::FromStr,
+};
 
 /// A finite float cannot contain NaN, +Inf or -Inf values.
 /// We did so in order to be able to implement the `Ord` trait.

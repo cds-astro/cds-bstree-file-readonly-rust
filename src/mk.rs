@@ -1,23 +1,23 @@
 //! This module contains the main code able to build and store in a file a bs-tree.
 
-use std::io::{Error, ErrorKind, Read};
-use std::str::FromStr;
+use std::{
+  io::{Error, ErrorKind, Read},
+  str::FromStr,
+};
 
 use csv::{Reader, StringRecord};
 use itertools::Itertools;
 
-use crate::bstree;
-use crate::cliargs::colargs::ColIndices;
-use crate::cliargs::memsize::MemSizeArgs;
-use crate::cliargs::mkargs::MkAlgoArgs;
-use crate::rw::ReadWrite;
-use crate::{Entry, EntryOpt, Id, IdVal, Process, Val};
+use crate::{
+  bstree,
+  cliargs::{colargs::ColIndices, memsize::MemSizeArgs, mkargs::MkAlgoArgs},
+  rw::ReadWrite,
+  Entry, EntryOpt, Id, IdVal, Process, Val,
+};
 
 // See cds.index.general.impl.bstree.BSTreeFile
 // and
 // /data/pineau/Eclipse/Documents/Communication/Conf/TechnoForumStras08052012/TechnoForum2012.pdf
-
-// Fix the L1 cachesiz
 
 pub struct MkIndex<R>
 where

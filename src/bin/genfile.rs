@@ -1,9 +1,11 @@
+use std::{
+  fs::File,
+  io::{self, BufWriter, Error, Write},
+  path::PathBuf,
+};
+
 use rand::prelude::*;
 use structopt::StructOpt;
-
-use std::fs::File;
-use std::io::{self, BufWriter, Error, Write};
-use std::path::PathBuf;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "genfile")]

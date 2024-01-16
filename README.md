@@ -1,6 +1,6 @@
 <meta charset="utf-8"/>
 
-# `bstree-file`
+# `bstree-file-readonly`
 
 About
 -----
@@ -9,8 +9,8 @@ Immutable implicit naive Binary Search Tree structure stored in a file.
 
 The tree structure (possibly larger than the available RAM) is created at once
 using bulk-loading.
-It is then possible to perform queries on the datastructure
-(nn query, knn query, range query, ...), but not to update it.
+It is then possible to perform queries on it (nn query, knn query, range query, ...), 
+but not to update it.
 
 It has been developed for (with a more general usage than) static astronomical catalogues.
 
@@ -24,7 +24,17 @@ The simple design inputs are:
 * => hence the choice of an implicit structure with an unbalanced rightmost part of the tree
 
 Remark: I do not claim this is the best possible structure, 
-it is a quite **naive implementation by a non-expert**, any feedback welcome.
+it is a quite **naive implementation by a non-expert**, rushing to have something working
+among other duties; any feedback welcome.
+
+CLI
+---
+
+Contains 3 CLI tools:
+* `mkbst`: to MaKe a Binary Search Tree file
+* `qbst`: to Query a Binary Search Tree file
+* `genfile`: to generate files with random values for testing purposes
+
 
 Purpose
 -------
@@ -35,7 +45,7 @@ The binary-search tree basically stores both values and OIDs (row indices).
 In input, the tools takes an identifiers (which can be an implicit sequential number)
 and a value.
 The indexation is made on the values.
-Queries returns entries which basically are tuples containing an identifier and value couple.
+Queries return entries which basically are tuples containing an identifier and value couple.
 
 
 Creation algorithm
@@ -49,18 +59,23 @@ There is two levels of blocks:
 * groups of blocks fitting in the disk cache 
 The full tree is not balanced:
 * it is made of a main balance tree
-* plus a rightmost sub-tree recursivly consiting in
-    - a main balanced tree
-    - plus a rightmost sub-tree...
+* plus a rightmost sub-tree recursively consisting in
+    + a main balanced tree
+    +plus a rightmost sub-tree...
 The tree has 0 unused byte.
 
-Warning
--------
 
-Main functionnalities are complete (building and queryig), but this is not 
-necessarilly production ready: more testing is needed (please report any bug).
+Disclaimer
+----------
 
-For performances purposes, the code makes a large use of monomorphization (no dynamic dispath at all!).
+Main functionalities are complete (building and querying), but all parts may not 
+necessarily be production ready: more testing is needed (please report any bug).
+
+However, **this code is already in production in** [VizieR](https://vizier.cds.unistra.fr/),
+mainly to index large catalogues identifiers.
+
+For performances purposes, the code makes a large use of monomorphization
+(no dynamic dispatch at all!).
 It leads to:
 * very long compilation time (1min/10min in debug/release mode)
 * large binaries:
@@ -71,8 +86,27 @@ It leads to:
 Other tools
 -----------
 
-For a larger project that may fullfill the need (an more), see:
+For a larger project that may fulfill the need (and more), see:
 * [sled](https://github.com/spacejam/sled) and this [paper](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/bw-tree-icde2013-final.pdf)
+
+
+Info
+----
+
+In the while project, we talk about `key/value` pairs.
+Although it may be counter-intuitive, **we actually index the** `value` 
+(e.g. a magnitude, which is not necessarily unique) and 
+we return the associated `key` (e.g. a unique record number in a table).
+
+A few ideas:
+* common use cases:
+    + index a unique identifier (value) and return a recno (key)
+    + index magnitudes (value) and return recnos (key)
+* to get the position of a Gaia source from its identifier:  
+  index the unique identifier (value) and return formatted JNAMEs (string key).
+* for fast magnitude based density maps:
+  index a magnitude (value) and return the order 12 healpix index (key).
+* index CSV rows using as key row starting byte offset
 
 
 Install
@@ -80,11 +114,21 @@ Install
 
 The standard way to install the `mkbst`, `qbst` and `genfile` binaries is:
 * install rust [see here](https://www.rust-lang.org/tools/install), possibly removing `--tlsv1.2` in the command line
-* fork and dowbload this repository
-* type `cargo install --path .` from the downloaded directory (can take ~10min!)
-* WARNING: by default only a subset of (key, value) pair is available. For all posilibities, use
+* fork and download this repository
+* type `cargo install --path .` from the downloaded directory (can take ~1-2min)
+* WARNING: by default only a subset of (key, value) pair is available. For all possibilities, use
   `cargo install --path . --features "all"` See [Cargo.toml](Cargo.toml) for the list of features.
 
+Fast compilation to test for a two key/value datatype couples, e.g. (unsigned integer/unsigned integer)
+and (unsigned integer/float):
+```bash
+cargo build --release --no-default-features --features u32_u32,u32_f32 --bin qbst
+```
+
+Full compilation (can tae 10min!):
+```bash
+cargo install --all-features --path .
+```
 
 Example
 -------
@@ -140,10 +184,10 @@ Both identifiers and values are stored on regular 32bit unsigned integers.
 
 Perform queries:
 ```bash
-time qbst bigtest.bstree.bin get -v 256984
-time qbst bigtest.bstree.bin knn -v 69853145 -k 10
-time qbst bigtest.bstree.bin range -l 10000 -f 25639 -t 250000
-time qbst bigtest.bstree.bin range -c -f 25639 -t 250000
+time qbst bigtest.bstree get --value 256984
+time qbst bigtest.bstree knn --value 69853145 -k 10
+time qbst bigtest.bstree range --limit 10000 --from 25639 --to 250000
+time qbst bigtest.bstree range --cout --from 25639 --to 250000
 ```
 
 Test on 10 million random f32 values
@@ -156,22 +200,22 @@ genfile 10000000 randf64 | mkbst -h  test_10m --id-type u4 --val-type f4
 
 Look at the nearest value from 0.5
 ```bash
-time qbst test_10m.bstree.bin nn value 0.5
+time qbst test_10m.bstree nn value 0.5
 ```
 
 Look at the 10 nearest values from 0.2 (the result is ordered by distance to 0.2)
 ```bash
-time qbst test_10m.bstree.bin knn -v 0.2 -k 10
+time qbst test_10m.bstree knn -v 0.2 -k 10
 ```
 
 Count the number of entries havig value in 0.4 and 0.6
 ```bash
-time qbst test_10m.bstree.bin range -f 0.4 -t 0.6 -c
+time qbst test_10m.bstree range -f 0.4 -t 0.6 -c
 ```
 
 Priny the value in the range 0.49999 and 0.50001 (the result is ordered by increasing values)
 ```bash
-time qbst test_10m.bstree.bin range -f 0.49999 -t 0.50001
+time qbst test_10m.bstree range -f 0.49999 -t 0.50001
 ```
 
 
@@ -187,10 +231,10 @@ real	9m49,775s
 user	7m37,361s
 sys	0m50,522s
 ```
-It took less than 10min to build the 15 GB ouput file (ok, the input file is alreay sorted).
+It took less than 10min to build the 15 GB ouput file (ok, the input file is already sorted).
 
 ```bash
-> qbst test2b.bstree.bin info
+> qbst test2b.bstree info
 
 {
   "types": [
@@ -224,7 +268,7 @@ It took less than 10min to build the 15 GB ouput file (ok, the input file is alr
 
 Simple exact value query:
 ```bash
-> time qbst test2b.bstree.bin get value 1569874529
+> time qbst test2b.bstree get value 1569874529
 
 id,val
 1569874529,1569874529
@@ -236,7 +280,7 @@ sys	0m0,002s
 
 Nearest neighbour query
 ```bash
-> time qbst test2b.bstree.bin nn -v 3000000000
+> time qbst test2b.bstree nn -v 3000000000
 
 distance,id,val
 1000000001,1999999999,1999999999
@@ -248,7 +292,7 @@ sys	0m0,000s
 
 K nearest neighbours query
 ```bash
-> time qbst test2b.bstree.bin knn -v 25684 -k 10
+> time qbst test2b.bstree knn -v 25684 -k 10
 
 distance,id,val
 0,25684,25684
@@ -269,7 +313,7 @@ sys	0m0,000s
 
 Range query
 ```bash
-> time qbst test2b.bstree.bin range -l 10 -f 25698470 -t 25698570
+> time qbst test2b.bstree range -l 10 -f 25698470 -t 25698570
 
 id,val
 25698470,25698470
@@ -290,16 +334,16 @@ sys	0m0,002s
 
 At first execution, the limiting factor is the disk access.
 At the second execution, the limiting factor is the time required by the OS to handle the process.
-The 2ms incude the time needed to read the tree metadata.
+The 2ms includes the time needed to read the tree metadata.
 
-Generate 100,000 random point in 0 - 2billion:
+Generate 100,000 random points in 0 - 2billion:
 ```bash
 ./genfile 2000000000 randint | head -100001 | tail -n +2 > toto.list
 ```
 
 In release mode (third execution):
 ```bash
-time qbst test2b.bstree.bin get list toto.list > toto.res.txt
+time qbst test2b.bstree get list toto.list > toto.res.txt
 
 real	0m0,732s
 user	0m0,245s
@@ -309,19 +353,19 @@ i.e. a mean of less than 8 micro second per query (including parsing, conversion
 (The mean is ~0.14 ms/query at the first execution)
 
 ```bash
-> time qbst test2b.bstree.bin nn list toto.list > toto.res.txt
+> time qbst test2b.bstree nn list toto.list > toto.res.txt
 
 real	0m16,224s
 user	0m0,482s
 sys	0m3,222s
 
-> time qbst test2b.bstree.bin nn list toto.list > toto.res.txt
+> time qbst test2b.bstree nn list toto.list > toto.res.txt
 
 real	0m1,651s
 user	0m0,256s
 sys	0m0,804s
 
-> time qbst test2b.bstree.bin nn list toto.list > toto.res.txt
+> time qbst test2b.bstree nn list toto.list > toto.res.txt
 
 real	0m0,760s
 user	0m0,251s
@@ -329,7 +373,7 @@ sys	0m0,509s
 ```
 
 * First execution: 0.16 ms/query
-* Thrid execution: 7.60 us/query
+* Third execution: 7.60 us/query
 
 We redo those query sorting the random number:
 ```bash
@@ -337,7 +381,7 @@ We redo those query sorting the random number:
 ```
 The results are similar.
 
-We recall that the index file is 15 GB large, so 2nd excecution is faster since the data
+We recall that the index file is 15 GB large, so 2nd execution is faster since the data
 is in the disk cache.
 
 
@@ -367,7 +411,7 @@ The queries have been tested on 2 distinct hardware:
     + 64 GB DDR4 2133 MHz
 
 The table return the "real" time provided by the "time" command.  
-Each command starts by `time qbst test.10b.bstree.bin` plus the `Query params`.
+Each command starts by `time qbst test.10b.bstree` plus the `Query params`.
 
 Here the command to generate the list input file in the queries using `list`:
 ```bash
@@ -452,7 +496,7 @@ I then have a 2.5 GB file `Gaia_source.txt` containing more 132,739,322 `Source`
 
 Two consecutive executions (slow 7200 RPM HDD) gives:
 ```bash
-time qbst ../gaia_dr2_source.bstree.bin get list Gaia_source.txt > Gaia.test.csv
+time qbst ../gaia_dr2_source.bstree get list Gaia_source.txt > Gaia.test.csv
 
 real	24m4,323s
 user	5m8,834s
@@ -460,7 +504,7 @@ sys	4m52,898s
 ```
 and
 ```bash
-time qbst ../gaia_dr2_source.bstree.bin get list Gaia_source.txt > Gaia.test.csv
+time qbst ../gaia_dr2_source.bstree get list Gaia_source.txt > Gaia.test.csv
 
 real	13m58,572s
 user	4m2,162s
@@ -470,7 +514,7 @@ I guess that the second execution benefits from HDD cache.
 
 Now sorting the input and querying again leads to:
 ```bash
-time qbst ../gaia_dr2_source.bstree.bin get list Gaia_source.sorted.txt > Gaia.test.sorted.csv
+time qbst ../gaia_dr2_source.bstree get list Gaia_source.sorted.txt > Gaia.test.sorted.csv
 
 real	5m53,569s
 user	2m43,339s
@@ -535,8 +579,10 @@ TODO list
 * [ ] remove the code which is now obsolete (e.g. `get` overwritten by `get exact visitor`)
 * [ ] add much more tests
 * [ ] add benchmarks
+* [ ] add CI
 * [ ] try to reduce the code redundancy (particularly in `SubTreeW` and `SubTreeR`)
 * [ ] add support for NULL values (storing them separately, out of the tree structure)
+    + in the meanwhile, we can use a pre-defined value coding null  
 * [ ] perform tests with [SQLx](https://github.com/launchbadge/sqlx) and PostgreSQL
       to have a reference time (would be nice if we are at least as fast)
 
@@ -548,6 +594,7 @@ If you use this code and work in a scientific public domain
 [CDS](https://en.wikipedia.org/wiki/Centre_de_donn%C3%A9es_astronomiques_de_Strasbourg)
 who developed it. 
 It may help us in promoting our work to our financiers.
+
 
 Warning
 -------
@@ -588,4 +635,3 @@ Contribution
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in this project by you, as defined in the Apache-2.0 license,
 shall be dual licensed as above, without any additional terms or conditions.
-

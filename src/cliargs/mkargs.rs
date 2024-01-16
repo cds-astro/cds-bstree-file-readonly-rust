@@ -23,7 +23,7 @@ pub struct MkAlgoArgs {
   /// Temporary directory containing temporary files
   pub temp: PathBuf,
   #[structopt(parse(from_os_str))]
-  /// Output file basename (without the .bstree.bin extension)
+  /// Output file basename (without the .bstree extension)
   output: PathBuf,
 }
 
@@ -35,7 +35,7 @@ impl MkAlgoArgs {
 
   pub fn get_output(&self) -> PathBuf {
     let mut o = self.output.clone();
-    o.set_extension("bstree.bin");
+    o.set_extension("bstree");
     o
   }
 }
@@ -282,23 +282,3 @@ where
     }
   }
 }
-
-/*
-
-pub fn get_toml_path(file_dir: &PathBuf) -> Box<Path> {
-  let mut output_file_path = (*file_dir).clone();
-  let mut file_name = output_file_path.file_name().unwrap().to_string_lossy().to_string();
-  file_name.push_str(".bstree.toml");
-  output_file_path.push(file_name);
-  output_file_path.into_boxed_path()
-}
-
-pub fn get_file_path(file_dir: &PathBuf) -> Box<Path> {
-  let mut output_file_path =(*file_dir).clone();
-  let mut file_name = output_file_path.file_name().unwrap().to_string_lossy().to_string();
-  file_name.push_str(".bstree.bin");
-  output_file_path.push(file_name);
-  output_file_path.into_boxed_path()
-}
-
-*/

@@ -1,5 +1,14 @@
-extern crate bstree_file;
-use bstree_file::{
+use std::{
+  fs::File,
+  io::{BufRead, BufReader, Cursor, Error, ErrorKind},
+  path::PathBuf,
+};
+
+#[cfg(not(target_arch = "wasm32"))]
+use memmap::{Mmap, MmapOptions};
+use structopt::{clap::AppSettings, StructOpt};
+
+use bstree_file_readonly::{
   bstree::{read_meta, BSTreeMeta, SubTreeR},
   cliargs::mode::*,
   rw::ReadWrite,
@@ -7,23 +16,12 @@ use bstree_file::{
   Entry, Id, IdVal, Process, Val,
 };
 
-#[cfg(not(target_arch = "wasm32"))]
-use memmap::{Mmap, MmapOptions};
-use structopt::{StructOpt, clap::AppSettings};
-
-use std::{
-  fs::File,
-  io::{BufRead, BufReader, Error, ErrorKind},
-  path::PathBuf,
-};
-use std::io::Cursor;
-
 #[derive(Debug, StructOpt)]
 #[structopt(name = "qbst", global_settings = &[AppSettings::ColoredHelp, AppSettings::AllowNegativeNumbers])]
 /// Query a Binary Search Tree stored in a file.
 ///
 ///  Example:
-///   qbst test.bstree.bin knn -v 12.5 -k 16
+///   qbst test.bstree knn -v 12.5 -k 16
 pub struct Args {
   /// File storing the binary search tree
   input: PathBuf,
@@ -94,20 +92,23 @@ impl<'a> Process for Query<'a> {
         println!("id,val");
         match limit {
           Some(limit) => {
-            for kv in self.mmap[self.data_starting_byte..].chunks_exact(entry_byte_size).take(limit) {
+            for kv in self.mmap[self.data_starting_byte..]
+              .chunks_exact(entry_byte_size)
+              .take(limit)
+            {
               let mut cursor = Cursor::new(kv);
               let id = id_rw.read(&mut cursor)?;
               let val = val_rw.read(&mut cursor)?;
               println!("{},{}", id, val);
             }
-          },
+          }
           None => {
             for kv in self.mmap[self.data_starting_byte..].chunks_exact(entry_byte_size) {
               let mut cursor = Cursor::new(kv);
               let id = id_rw.read(&mut cursor)?;
               let val = val_rw.read(&mut cursor)?;
               println!("{},{}", id, val);
-            }   
+            }
           }
         }
         Ok(())

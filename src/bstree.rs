@@ -4,15 +4,17 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use memmap::{Mmap, MmapMut};
 use serde::{self, Deserialize, Serialize};
 
-use std::fs::OpenOptions;
-use std::io::{Error, ErrorKind, Read, Write};
-use std::num::ParseIntError;
-use std::path::PathBuf;
+use std::{
+  fs::OpenOptions,
+  io::{Error, ErrorKind, Read, Write},
+  num::ParseIntError,
+  path::PathBuf,
+};
 
-use crate::cliargs::memsize::MemSizeArgs;
-use crate::rw::ReadWrite;
-use crate::visitors::*;
-use crate::{Entry, Id, IdVal, Process, RawEntries, Val};
+use crate::{
+  cliargs::memsize::MemSizeArgs, rw::ReadWrite, visitors::*, Entry, Id, IdVal, Process, RawEntries,
+  Val,
+};
 
 const FILE_TYPE: &[u8; 10] = b"BSTreeFile";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -2089,7 +2091,7 @@ impl BSTreeConstants {
 ///     + depth 0: the `n` inter L1 blocks values
 ///     + depth 1: the `n + 1` L1 blocks values
 /// * The deepest depth is always made of L1 blocks
-/// * The nuber of elements l1 and ld are fixed, except in the root.
+/// * The number of elements l1 and ld are fixed, except in the root.
 /// * It means that
 ///     + Tree of depth 0: (l1)
 ///         - depth = 0, one L1 block
@@ -2611,8 +2613,8 @@ pub fn get<I, V, IRW, VRW, T>(
 
 #[cfg(test)]
 mod tests {
-  use crate::{IdType, ValType, rw::U64RW};
   use super::*;
+  use crate::{rw::U64RW, IdType, ValType};
 
   #[test]
   fn testok_num_nside() {
@@ -2623,7 +2625,7 @@ mod tests {
   #[test]
   fn testok_build() {
     use std::path::PathBuf;
-    let path = PathBuf::from("./test_u64u64_x3.bstree.bin");
+    let path = PathBuf::from("./test_u64u64_x3.bstree");
     // Write
     {
       let mem_args = MemSizeArgs {
