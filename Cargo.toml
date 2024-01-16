@@ -1,7 +1,18 @@
 [package]
 name = "bstree-file-readonly"
 version = "0.1.1"
-authors = ["pineau <francois-xavier.pineau@astro.unistra.fr>"]
+authors = ["F.-X. Pineau <francois-xavier.pineau@astro.unistra.fr>"]
+description = """
+Make and Query read-only binary-search tree file, 
+supporting billions of entries in files of tens of GB.
+"""
+license = "Apache-2.0 OR MIT"
+readme = "README.md"
+categories = ["command-line-utilities", "data-structures", "algorithms"]
+keywords = ["bstree", "indexation", "binary-search", "database"]
+documentation = "https://docs.rs/bstree-file-readonly"
+homepage = "https://github.com/cds-astro/cds-bstree-file-readonly-rust/"
+repository = "https://github.com/cds-astro/cds-bstree-file-readonly-rust/"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

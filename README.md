@@ -2,6 +2,9 @@
 
 # `bstree-file-readonly`
 
+Make and Query read-only binary-search tree file
+supporting billions of entries in files of tens of GB.
+
 About
 -----
 
