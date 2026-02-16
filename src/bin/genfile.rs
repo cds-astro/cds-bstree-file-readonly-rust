@@ -77,7 +77,7 @@ impl Mode {
         Mode::RandF64 => {
           let mut rng = thread_rng();
           for i in 0..n {
-            let x: f64 = rng.gen(); // random number in range [0, 1)
+            let x: f64 = rng.r#gen(); // random number in range [0, 1)
             writer.write_all(format!("{},{}\n", i, x).as_bytes())?;
           }
         }
@@ -106,7 +106,7 @@ impl Mode {
         Mode::RandF64 => {
           let mut rng = thread_rng();
           for _ in 0..n {
-            let x: f64 = rng.gen(); // random number in range [0, 1)
+            let x: f64 = rng.r#gen(); // random number in range [0, 1)
             writer.write_all(format!("{}\n", x).as_bytes())?;
           }
         }

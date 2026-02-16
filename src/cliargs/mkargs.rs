@@ -1,8 +1,11 @@
 //! Other arguments needed when building the bs-tree
+use std::{
+  fs::{self, File},
+  io::{BufReader, BufWriter, Error, ErrorKind},
+  path::{Path, PathBuf},
+};
+
 use itertools::{Itertools, KMerge};
-use std::fs::{self, File};
-use std::io::{BufReader, BufWriter, Error, ErrorKind};
-use std::path::PathBuf;
 use structopt::StructOpt;
 
 use crate::rw::ReadWrite;
@@ -24,10 +27,26 @@ pub struct MkAlgoArgs {
   pub temp: PathBuf,
   #[structopt(parse(from_os_str))]
   /// Output file basename (without the .bstree extension)
-  output: PathBuf,
+  pub output: PathBuf,
 }
 
 impl MkAlgoArgs {
+  pub fn new<P: AsRef<Path>>(
+    chunk_size: Option<usize>,
+    kway: Option<usize>,
+    temp: Option<P>,
+    output: P,
+  ) -> Self {
+    Self {
+      chunk_size: chunk_size.unwrap_or(50_000_000),
+      kway: kway.unwrap_or(7),
+      temp: temp
+        .map(|p| p.as_ref().to_path_buf())
+        .unwrap_or(PathBuf::from(".bstree_tmp")),
+      output: output.as_ref().to_path_buf(),
+    }
+  }
+
   pub fn get_tmp_dir(&self) -> Result<TmpDir, Error> {
     let path = self.temp.clone();
     TmpDir::new(path)
