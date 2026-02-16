@@ -266,8 +266,6 @@ where
   IRW: ReadWrite<Type = I>,
   VRW: ReadWrite<Type = V>,
 {
-  /// Number of entries per chunk
-  chunk_size: usize,
   /// Args
   args: MkAlgoArgs,
   /// Memory size args
@@ -293,15 +291,14 @@ where
   VRW: ReadWrite<Type = V>,
 {
   pub fn new(
-    chunk_size: usize,
     args: MkAlgoArgs,
     mem_args: MemSizeArgs,
     types: IdVal,
     id_rw: IRW,
     val_rw: VRW,
   ) -> Result<Self, Error> {
+    let chunk_size = args.chunk_size;
     args.get_tmp_dir().map(|tmp_dir| Self {
-      chunk_size,
       args,
       mem_args,
       tmp_dir,
@@ -324,11 +321,11 @@ where
   }
 
   fn chunk_is_full(&self) -> bool {
-    self.entries.len() == self.chunk_size
+    self.entries.len() == self.args.chunk_size
   }
 
   fn sort_and_write_entries(&mut self) -> Result<(), Error> {
-    let mut chunk = std::mem::replace(&mut self.entries, Vec::with_capacity(self.chunk_size));
+    let mut chunk = std::mem::replace(&mut self.entries, Vec::with_capacity(self.args.chunk_size));
     debug!("Sort chunk...");
     chunk.sort();
     info!(
