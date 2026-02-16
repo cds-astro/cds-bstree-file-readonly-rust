@@ -7,10 +7,15 @@ use std::{
 
 use csv::{Reader, StringRecord};
 use itertools::Itertools;
+use log::{debug, info, warn};
 
 use crate::{
   bstree,
-  cliargs::{colargs::ColIndices, memsize::MemSizeArgs, mkargs::MkAlgoArgs},
+  cliargs::{
+    colargs::ColIndices,
+    memsize::MemSizeArgs,
+    mkargs::{MkAlgoArgs, TmpDir},
+  },
   rw::ReadWrite,
   Entry, EntryOpt, Id, IdVal, Process, Val,
 };
@@ -19,6 +24,7 @@ use crate::{
 // and
 // /data/pineau/Eclipse/Documents/Communication/Conf/TechnoForumStras08052012/TechnoForum2012.pdf
 
+/// Create an index from a CSV file.
 pub struct MkIndex<R>
 where
   R: Read,
@@ -87,11 +93,9 @@ where
       tmp_dir.write_tmp_file(id_rw, val_rw, entries)?;
       eprint!("\r\x1b[2K - n rows parsed and written: {}", &count);
     }
-    // Reduce to max kway files by merge sort.
-    eprint!("\nReduce to max {} tmp files...", self.args.kway);
+    info!("Reduce to max {} files be merge sort...", self.args.kway);
     tmp_dir = tmp_dir.reduce_to_k_files(id_rw, val_rw, self.args.kway)?;
-    eprintln!(" done");
-    // Read all tmp files to generate the final sorted file
+    info!("Re-read all tmp files to build the final bstree file...");
     let sorted_entry_iter = tmp_dir.to_sorted_iter(id_rw, val_rw);
     #[cfg(not(target_arch = "wasm32"))]
     bstree::build(
@@ -141,7 +145,7 @@ impl<R: Read> Process for MkIndex<R> {
     IRW: ReadWrite<Type = I>,
     VRW: ReadWrite<Type = V>,
   {
-    eprintln!("Parse CSV and write tmp files...");
+    info!("Parse CSV and write tmp files...");
     let i_val = self.col_indices.val;
     if self.supports_null {
       match self.col_indices.id {
@@ -182,17 +186,13 @@ fn get<F: FromStr>(record: &StringRecord, index: usize, col_name: &'static str) 
   match res {
     Some(str_ref) => {
       if str_ref.is_empty() {
-        eprintln!(
-          "WARNING: empty col '{}' at {}!",
-          col_name,
-          get_position_str(record)
-        );
+        warn!("Empty col '{}' at {}!", col_name, get_position_str(record));
         None
       } else {
         match str_ref.parse::<F>() {
           Ok(val) => Some(val),
           Err(_) => {
-            eprintln!(
+            warn!(
               "WARNING: error parsing col '{}' value '{}' at {}, the value is set to NULL!",
               col_name,
               str_ref,
@@ -205,8 +205,8 @@ fn get<F: FromStr>(record: &StringRecord, index: usize, col_name: &'static str) 
     }
     None => {
       // unreachable if mode is not 'flexible'
-      eprintln!(
-        "WARNING: no col '{}' at {}, the line is ignored!",
+      warn!(
+        "No col '{}' at {}, the line is ignored!",
         col_name,
         get_position_str(record)
       );
@@ -255,5 +255,115 @@ fn get_position_str(record: &StringRecord) -> String {
   match record.position() {
     Some(pos) => format!("{:?}", pos),
     None => String::from("(no position information available)"),
+  }
+}
+
+/// Structure building a index element by element.
+pub struct BSTreeFileBuilder<I, V, IRW, VRW>
+where
+  I: Id,
+  V: Val,
+  IRW: ReadWrite<Type = I>,
+  VRW: ReadWrite<Type = V>,
+{
+  /// Number of entries per chunk
+  chunk_size: usize,
+  /// Args
+  args: MkAlgoArgs,
+  /// Memory size args
+  mem_args: MemSizeArgs,
+  /// Tmp dir obj
+  tmp_dir: TmpDir,
+  /// Id and value types (to write in the file)
+  types: IdVal,
+  /// Writers
+  id_rw: IRW,
+  val_rw: VRW,
+  /// Chunk
+  entries: Vec<Entry<I, V>>,
+  /// Number of elements in the tree
+  count: usize,
+}
+
+impl<I, V, IRW, VRW> BSTreeFileBuilder<I, V, IRW, VRW>
+where
+  I: Id,
+  V: Val,
+  IRW: ReadWrite<Type = I>,
+  VRW: ReadWrite<Type = V>,
+{
+  pub fn new(
+    chunk_size: usize,
+    args: MkAlgoArgs,
+    mem_args: MemSizeArgs,
+    types: IdVal,
+    id_rw: IRW,
+    val_rw: VRW,
+  ) -> Result<Self, Error> {
+    args.get_tmp_dir().map(|tmp_dir| Self {
+      chunk_size,
+      args,
+      mem_args,
+      tmp_dir,
+      types,
+      id_rw,
+      val_rw,
+      entries: Vec::with_capacity(chunk_size),
+      count: 0,
+    })
+  }
+
+  /// We recall that the value is indexed (it is th key) and the identifier correspond, e.g., to
+  /// a recno and is the information we want to retrieve from a query of the indexed values.
+  pub fn append(&mut self, id: I, val: V) -> Result<(), Error> {
+    if self.chunk_is_full() {
+      self.sort_and_write_entries()?;
+    }
+    self.entries.push(Entry::new(id, val));
+    Ok(())
+  }
+
+  fn chunk_is_full(&self) -> bool {
+    self.entries.len() == self.chunk_size
+  }
+
+  fn sort_and_write_entries(&mut self) -> Result<(), Error> {
+    let mut chunk = std::mem::replace(&mut self.entries, Vec::with_capacity(self.chunk_size));
+    debug!("Sort chunk...");
+    chunk.sort();
+    info!(
+      "Write chunk {}..{} in temporary file...",
+      self.count,
+      self.count + chunk.len()
+    );
+    self.count += chunk.len();
+    self
+      .tmp_dir
+      .write_tmp_file(&self.id_rw, &self.val_rw, chunk)
+  }
+
+  /// Returns the number en entries in the BSTree.s
+  pub fn build_index(mut self) -> Result<usize, Error> {
+    // Write last elements in a temporray file
+    if !self.entries.is_empty() {
+      self.sort_and_write_entries()?;
+    }
+    info!("Reduce to max {} files be merge sort...", self.args.kway);
+    let mut tmp_dir = self
+      .tmp_dir
+      .reduce_to_k_files(&self.id_rw, &self.val_rw, self.args.kway)?;
+    info!("Re-read all tmp files to build the final bstree file...");
+    let sorted_entry_iter = tmp_dir.to_sorted_iter(&self.id_rw, &self.val_rw);
+    #[cfg(not(target_arch = "wasm32"))]
+    bstree::build(
+      self.args.get_output(),
+      &self.mem_args,
+      self.count,
+      sorted_entry_iter,
+      &self.types,
+      &self.id_rw,
+      &self.val_rw,
+    )
+    .map(|()| self.count)
   }
 }

@@ -290,7 +290,6 @@ impl From<(IdType, ValType)> for IdVal {
 }
 
 impl IdVal {
-
   pub fn new(id: IdType, val: ValType) -> Self {
     (id, val).into()
   }
@@ -1085,6 +1084,10 @@ pub struct Entry<I: Id, V: Val> {
 }
 
 impl<I: Id, V: Val> Entry<I, V> {
+  pub fn new(id: I, val: V) -> Self {
+    Self { id, val }
+  }
+
   fn read<R, IRW, VRW>(
     reader: &mut R,
     id_codec: &IRW,
@@ -1097,7 +1100,7 @@ impl<I: Id, V: Val> Entry<I, V> {
   {
     id_codec
       .read(reader)
-      .and_then(|id| val_codec.read(reader).map(|val| Entry { id, val }))
+      .and_then(|id| val_codec.read(reader).map(|val| Entry::new(id, val)))
   }
 
   fn write<W, IRW, VRW>(
