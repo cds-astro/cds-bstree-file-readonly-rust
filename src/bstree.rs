@@ -2327,13 +2327,13 @@ where
 
   // Decorate with an iterator that ensure that the input iterator is sorted?
   let entry_byte_size = id_rw.n_bytes() + val_rw.n_bytes();
-  let meta = dbg!(BSTreeMeta::from(
+  let meta = BSTreeMeta::from(
     types.clone(),
     n_entries,
     entry_byte_size,
     mem_args.l1_byte_size(),
-    mem_args.disk_byte_size()
-  ));
+    mem_args.disk_byte_size(),
+  );
   let encoded_meta: Vec<u8> = bincode::serialize(&meta).unwrap();
   // Open file
   let file = OpenOptions::new()

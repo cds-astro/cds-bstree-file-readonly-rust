@@ -6,6 +6,7 @@ use std::{
 };
 
 use itertools::{Itertools, KMerge};
+use log::{debug, error};
 use structopt::StructOpt;
 
 use crate::rw::ReadWrite;
@@ -143,7 +144,7 @@ impl TmpDir {
           val_rw,
           chunk
             .map(|i| {
-              eprintln!("level: {}; i_chunk: {}", self.level, &i);
+              debug!("level: {}; i_chunk: {}", self.level, &i);
               self.to_sorted_entry_iter(id_rw, val_rw, i)
             })
             .kmerge(),
@@ -207,6 +208,12 @@ impl TmpDir {
       }
     }
     // Remove dir if possible, but with no error if it fails (files of a deeper level must be present)
+    if let Err(e) = fs::remove_dir(&self.path) {
+      error!(
+        "Unable to remove directory: {:?}. Directory not empty? Err: {:?}",
+        self.path, e
+      );
+    }
     Ok(())
   }
 }
@@ -214,7 +221,7 @@ impl TmpDir {
 impl Drop for TmpDir {
   fn drop(&mut self) {
     if self.clear().is_err() {
-      eprintln!(
+      error!(
         "Unable to clean the temporary dir '{:?}'. Remove files and dir manually!",
         &self.path
       );
