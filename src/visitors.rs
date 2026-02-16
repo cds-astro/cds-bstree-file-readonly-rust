@@ -86,7 +86,7 @@ pub struct VisitorExact<I: Id, V: Val> {
 }
 
 impl<I: Id, V: Val> VisitorExact<I, V> {
-  pub fn new(center: V) -> VisitorExact<I, V> {
+  pub fn new(center: V) -> Self {
     Self {
       center,
       entry: None,
@@ -134,7 +134,7 @@ pub struct VisitorAllCount<I: Id, V: Val> {
 }
 
 impl<I: Id, V: Val> VisitorAllCount<I, V> {
-  pub fn new(center: V, limit: usize) -> VisitorAllCount<I, V> {
+  pub fn new(center: V, limit: usize) -> Self {
     Self {
       center,
       limit,
@@ -193,7 +193,7 @@ pub struct VisitorAll<I: Id, V: Val> {
 }
 
 impl<I: Id, V: Val> VisitorAll<I, V> {
-  pub fn new(center: V, limit: usize) -> VisitorAll<I, V> {
+  pub fn new(center: V, limit: usize) -> Self {
     Self {
       center,
       limit,
@@ -281,7 +281,7 @@ where
   U: Ord,
   D: Fn(&V, &V) -> U,
 {
-  pub fn new(center: V, distance: &'a D, d_max: Option<U>) -> VisitorNn<I, V, U, D> {
+  pub fn new(center: V, distance: &'a D, d_max: Option<U>) -> Self {
     Self {
       center,
       dist: distance,
@@ -404,7 +404,7 @@ where
   U: Ord,
   D: Fn(&V, &V) -> U,
 {
-  pub fn new(center: V, distance: D, k: usize, d_max: Option<U>) -> VisitorKnn<I, V, U, D> {
+  pub fn new(center: V, distance: D, k: usize, d_max: Option<U>) -> Self {
     Self {
       center,
       dist: distance,
@@ -515,7 +515,7 @@ where
   I: Id,
   V: Val,
 {
-  pub fn new(lo: V, hi: V, limit: usize) -> VisitorRangeCount<I, V> {
+  pub fn new(lo: V, hi: V, limit: usize) -> Self {
     VisitorRangeCount {
       lo,
       hi,
@@ -585,7 +585,7 @@ where
   I: Id,
   V: Val,
 {
-  pub fn new(lo: V, hi: V, limit: usize) -> VisitorRange<I, V> {
+  pub fn new(lo: V, hi: V, limit: usize) -> Self {
     VisitorRange {
       lo,
       hi,

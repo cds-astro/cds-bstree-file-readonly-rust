@@ -2304,6 +2304,8 @@ impl BSTreeLayout {
 ///
 /// # Panic
 /// * Panics if the entries in the input iterator are not ordered with respect to their values
+// WE SHOULE IMPLEMENT IdRW(ReadWrite) and ValReadWrite(ReadWrite) with methods get_id_type() and get_val_type() respectively,
+// not to have to pass 'types' in parameters (added to write the metadata!)
 #[cfg(not(target_arch = "wasm32"))]
 pub fn build<I, V, IRW, VRW, T>(
   output_file: PathBuf,

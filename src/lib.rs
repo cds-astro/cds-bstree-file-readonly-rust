@@ -89,8 +89,8 @@ pub trait Id: FromStr + FromU64 + Display + Debug + Clone + Send {}
 impl<T> Id for T where T: FromStr + FromU64 + Display + Debug + Clone + Send {}
 
 /// Trait defining the minimum requirements to be a value
-pub trait Val: FromStr + Clone + Ord + Display + Debug + Clone + Send {}
-impl<T> Val for T where T: FromStr + Clone + Ord + Display + Debug + Clone + Send {}
+pub trait Val: FromStr + Ord + Display + Debug + Clone + Send {}
+impl<T> Val for T where T: FromStr + Ord + Display + Debug + Clone + Send {}
 
 #[derive(Debug)]
 pub enum IdInMemType {
@@ -283,7 +283,18 @@ pub trait Process {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IdVal(IdType, ValType);
 
+impl From<(IdType, ValType)> for IdVal {
+  fn from((id, val): (IdType, ValType)) -> Self {
+    Self(id, val)
+  }
+}
+
 impl IdVal {
+
+  pub fn new(id: IdType, val: ValType) -> Self {
+    (id, val).into()
+  }
+
   pub fn id_type(&self) -> &IdType {
     &self.0
   }
